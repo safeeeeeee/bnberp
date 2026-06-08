@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B&B ERP Pro - Cloud Edition</title>
-
+    <title>B&B ERP Pro</title>
     <script type="module">
     // ── FIREBASE v10 MODULAR SDK (Firestore) ──
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -12,158 +11,6 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     window.__firebaseModules = { initializeApp, getApps, getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, getAuth, signInAnonymously, onAuthStateChanged };
     </script>
-
-    <style>
-        :root { --navy-950: #000000; --navy-900: #000000; --navy-800: #111111; --accent: #ffffff; --text-primary: #ffffff; }
-        body { font-family: 'Inter', sans-serif; background: var(--navy-900); color: var(--text-primary); margin: 0; padding: 20px; }
-        .card { background: var(--navy-800); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        input, select { background: #0a0a0a; color: white; border: 1px solid #333333; padding: 10px; border-radius: 6px; width: 100%; margin: 8px 0; box-sizing: border-box; }
-        button { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; }
-        .list-item { border-bottom: 1px solid #262626; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .status-badge { color: #f59e0b; font-size: 12px; border: 1px solid #f59e0b; padding: 2px 8px; border-radius: 12px; }
-    </style>
-</head>
-<body>
-
-<div id="app">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h1>B&B ERP <span style="color: #10b981; font-size: 14px;">● LIVE CLOUD</span></h1>
-        <div id="sync-status">🔄 Connecting...</div>
-    </div>
-
-    <div class="card">
-        <h3>Quick Entry</h3>
-        <form id="erpForm">
-            <select id="entryType">
-                <option value="Task">Task</option>
-                <option value="AR">Receivable (Lena hai)</option>
-                <option value="AP">Payable (Dena hai)</option>
-            </select>
-            <input type="text" id="title" placeholder="Description / Client Name" required>
-            <input type="number" id="amount" placeholder="Amount (for Accounting)">
-            <input type="text" id="assign" placeholder="Assign to">
-            <button type="submit" id="saveBtn">Sync to All PCs</button>
-        </form>
-    </div>
-
-    <div class="card">
-        <h3>Live Activity Feed</h3>
-        <div id="dataDisplay">Loading cloud data...</div>
-    </div>
-</div>
-
-<script type="module">
-// ── FIREBASE v10 MODULAR SDK (Firestore) — Quick Entry Block ──
-const { initializeApp, getApps, getFirestore, collection, addDoc, onSnapshot, getAuth, signInAnonymously } = window.__firebaseModules;
-
-// 1. Firebase Configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyBBimqGeQC79E5mXRGefDpy8GaJftpZOBk",
-    authDomain: "bnb-erp.firebaseapp.com",
-    projectId: "bnb-erp",
-    storageBucket: "bnb-erp.firebasestorage.app",
-    messagingSenderId: "457881869310",
-    appId: "1:457881869310:web:9f4a4acef59ccc80db3eaf",
-    measurementId: "G-F2M8B1VC7W"
-};
-
-// 2. Initialize Firestore
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const db = getFirestore(app);  // Firestore instance
-const auth = getAuth(app);
-
-// 3. Anonymous Auth + debug ping (Firestore: set a doc in 'pings' collection)
-signInAnonymously(auth).then(async () => {
-    const { setDoc, doc } = window.__firebaseModules;
-    await setDoc(doc(db, 'pings', 'cloud_test_ping'), { status: 'connected', ts: Date.now() });
-}).catch((error) => console.error("Firebase ping failed: ", error));
-
-// 4. Save to Firestore — 'cloud_erp_data' collection (addDoc auto-generates ID)
-async function syncToCloud(myData) {
-    try {
-        await addDoc(collection(db, 'cloud_erp_data'), myData);
-        console.log("Cloud se connect ho gaya aur data save ho gaya!");
-    } catch (error) {
-        console.error("Connection mein masla hai: ", error);
-    }
-}
-
-// ---- App wiring (form submit + live feed) ----
-const syncStatusEl = document.getElementById('sync-status');
-const dataDisplayEl = document.getElementById('dataDisplay');
-const erpFormEl = document.getElementById('erpForm');
-const saveBtnEl = document.getElementById('saveBtn');
-
-if (erpFormEl) {
-    erpFormEl.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (saveBtnEl) {
-            saveBtnEl.innerText = "Syncing...";
-            saveBtnEl.disabled = true;
-        }
-
-        const entry = {
-            type: document.getElementById('entryType')?.value || '',
-            title: document.getElementById('title')?.value || '',
-            amount: document.getElementById('amount')?.value || 0,
-            assignee: document.getElementById('assign')?.value || "All",
-            status: "Pending",
-            time: new Date().toLocaleString()
-        };
-
-        syncToCloud(entry);
-        e.target.reset();
-
-        if (saveBtnEl) {
-            saveBtnEl.innerText = "Sync to All PCs";
-            saveBtnEl.disabled = false;
-        }
-    });
-}
-
-// 5. Real-time listener — onSnapshot replaces .on('value', ...)
-// Collection: 'cloud_erp_data' maps directly from RTDB node 'cloud_erp_data'
-onSnapshot(collection(db, 'cloud_erp_data'), (snapshot) => {
-    if (syncStatusEl) syncStatusEl.innerText = "✅ Cloud Active";
-    if (!dataDisplayEl) return;
-    dataDisplayEl.innerHTML = "";
-
-    const docs = snapshot.docs;
-    if (docs.length > 0) {
-        // Reverse for newest-first display
-        [...docs].reverse().forEach((docSnap) => {
-            const item = docSnap.data() || {};
-            dataDisplayEl.innerHTML += `
-                <div class="list-item">
-                    <div>
-                        <span style="font-size:10px; background:#262626; padding:2px 5px; border-radius:4px;">${item.type ?? ''}</span>
-                        <div style="font-weight:bold; margin-top:5px;">${item.title ?? ''}</div>
-                        <div style="font-size:12px; color:#94a3b8;">${item.assignee ?? ''} | ${item.time ?? ''}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="color:#10b981; font-weight:bold;">${Number(item.amount) > 0 ? 'PKR ' + item.amount : ''}</div>
-                        <div class="status-badge">${item.status ?? ''}</div>
-                    </div>
-                </div>
-            `;
-        });
-    } else {
-        dataDisplayEl.innerHTML = "No data found in cloud.";
-    }
-}, (error) => {
-    console.error('Firestore read error:', error);
-    if (syncStatusEl) syncStatusEl.innerText = "❌ Cloud Error";
-});
-</script>
-
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B&B ERP Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -2432,13 +2279,11 @@ function deleteAR(id) {
     if (!confirm('Delete this receivable record?')) return;
     const ar = STATE.accountsReceivable.find(r => String(r.id)===String(id));
     if (ar) {
-        // Remove all GL entries tied to this AR (invoice + any payments)
-        const arRef = ar.inv || ('AR-' + ar.id);
         const arIdStr = String(ar.id);
+        // Invoice ref is now always "<inv>-<id>" or "AR-<id>"; payment refs are "PMT-<id>-<ts>"
         STATE.generalLedger = STATE.generalLedger.filter(e => {
             const ref = String(e.reference || '');
-            // Remove the invoice entry (exact ref match) and any payment entries (PMT-<inv|id>-...)
-            return ref !== arRef && !ref.startsWith('PMT-' + arRef + '-') && !ref.startsWith('PMT-' + arIdStr + '-');
+            return !ref.endsWith('-' + arIdStr) && !ref.startsWith('PMT-' + arIdStr + '-');
         });
         syncCOABalancesFromGL();
     }
@@ -2558,13 +2403,11 @@ function deleteAP(id) {
     if (!confirm('Delete this payable record?')) return;
     const ap = STATE.accountsPayable.find(p => String(p.id)===String(id));
     if (ap) {
-        // Remove all GL entries tied to this AP (bill + any payments)
-        const apRef = ap.ref || ('AP-' + ap.id);
         const apIdStr = String(ap.id);
+        // Bill ref is now always "<ref>-<id>" or "AP-<id>"; payment refs are "APMT-<id>-<ts>"
         STATE.generalLedger = STATE.generalLedger.filter(e => {
             const ref = String(e.reference || '');
-            // Remove the bill entry (exact ref match) and any payment entries (APMT-<ref|id>-...)
-            return ref !== apRef && !ref.startsWith('APMT-' + apRef + '-') && !ref.startsWith('APMT-' + apIdStr + '-');
+            return !ref.endsWith('-' + apIdStr) && !ref.startsWith('APMT-' + apIdStr + '-');
         });
         syncCOABalancesFromGL();
     }
@@ -2667,6 +2510,12 @@ async function saveExpense() {
 function deleteExpense(id) {
     if (!requireAdmin('delete expenses')) return;
     if (!confirm('Delete this expense record?')) return;
+    const expense = STATE.expenses.find(e => String(e.id) === String(id));
+    if (expense) {
+        const expRef = (expense.ref ? expense.ref + '-' + expense.id : 'EXP-' + expense.id);
+        STATE.generalLedger = STATE.generalLedger.filter(e => String(e.reference || '') !== expRef);
+        syncCOABalancesFromGL();
+    }
     STATE.expenses = STATE.expenses.filter(e => String(e.id) !== String(id));
     persistAccountingNow('Expense deleted!').then(async synced => {
         render();
@@ -2703,7 +2552,19 @@ async function saveOfficeCash() {
     const ref    = document.getElementById('oc_ref').value.trim();
     const notes  = document.getElementById('oc_notes').value.trim();
     if (!date || !amount) { showToast('Date and amount are required', 'error'); return; }
-    STATE.officeExpenseCash.push({ id: Date.now(), date, amount, source, ref, notes });
+    const newCash = { id: Date.now(), date, amount, source, ref, notes };
+    STATE.officeExpenseCash.push(newCash);
+    // Post double-entry: Dr Cash (office cash received) / Cr Owner's Capital or Equity
+    const glRef = ref || ('OC-' + newCash.id);
+    postJournalEntry(
+        date,
+        glRef,
+        `Office cash received${source ? ' — ' + source : ''}`,
+        [
+            { side:'debit',  accountType:'assets', nameFragment:'cash', fallbackCode:1010, fallbackName:'Cash', amount },
+            { side:'credit', accountType:'equity',  nameFragment:'capital', fallbackCode:3010, fallbackName:"Owner's Capital", amount },
+        ]
+    );
     const synced = await persistAccountingNow('Office cash added!');
     closeModal();
     render();
@@ -2712,6 +2573,12 @@ async function saveOfficeCash() {
 function deleteOfficeCash(id) {
     if (!requireAdmin('delete office expense cash')) return;
     if (!confirm('Delete this cash receipt record?')) return;
+    const cash = STATE.officeExpenseCash.find(c => String(c.id) === String(id));
+    if (cash) {
+        const glRef = cash.ref || ('OC-' + cash.id);
+        STATE.generalLedger = STATE.generalLedger.filter(e => String(e.reference || '') !== glRef);
+        syncCOABalancesFromGL();
+    }
     STATE.officeExpenseCash = STATE.officeExpenseCash.filter(c => String(c.id) !== String(id));
     persistAccountingNow('Cash receipt deleted!').then(async synced => {
         render();
@@ -2772,6 +2639,12 @@ async function saveCash() {
 function deleteCash(id) {
     if (!requireAdmin('edit cash and bank transactions')) return;
     if (!confirm('Delete this transaction?')) return;
+    const tx = STATE.cashTransactions.find(t => String(t.id) === String(id));
+    if (tx) {
+        const cbRef = (tx.ref ? tx.ref + '-' + tx.id : 'CB-' + tx.id);
+        STATE.generalLedger = STATE.generalLedger.filter(e => String(e.reference || '') !== cbRef);
+        syncCOABalancesFromGL();
+    }
     STATE.cashTransactions = STATE.cashTransactions.filter(t => String(t.id)!==String(id));
     persistAccountingNow('Transaction deleted!').then(async synced => {
         render();
@@ -2862,7 +2735,8 @@ function _glEntryExists(reference, side) {
 // ── AR INVOICE CREATED: Dr Accounts Receivable / Cr Service Revenue ──
 function glPostARInvoice(ar) {
     if (!ar || !(ar.total > 0)) return;
-    const ref = ar.inv || ('AR-' + ar.id);
+    // Always include ar.id in ref to guarantee uniqueness even if two invoices share the same inv number
+    const ref = (ar.inv ? ar.inv + '-' + ar.id : 'AR-' + ar.id);
     if (_glEntryExists(ref, 'debit')) return; // already posted
     postJournalEntry(
         ar.date,
@@ -2880,7 +2754,7 @@ function glPostARPayment(ar, previousReceived) {
     if (!ar) return;
     const newAmount = (ar.received || 0) - (previousReceived || 0);
     if (newAmount <= 0) return;
-    const ref = `PMT-${ar.inv || ar.id}-${Date.now()}`;
+    const ref = `PMT-${ar.id}-${Date.now()}`;
     postJournalEntry(
         new Date().toISOString().slice(0,10),
         ref,
@@ -2895,7 +2769,8 @@ function glPostARPayment(ar, previousReceived) {
 // ── EXPENSE RECORDED: Dr Expense Account / Cr Cash ──
 function glPostExpense(expense) {
     if (!expense || !(expense.amount > 0)) return;
-    const ref = expense.ref || ('EXP-' + expense.id);
+    // Always include expense.id to guarantee uniqueness
+    const ref = (expense.ref ? expense.ref + '-' + expense.id : 'EXP-' + expense.id);
     if (_glEntryExists(ref, 'debit')) return;
     const expAcct = _resolveGLAccount('expenses', expense.type || 'expense', 5990, expense.type || 'General Expense');
     postJournalEntry(
@@ -2912,7 +2787,8 @@ function glPostExpense(expense) {
 // ── AP BILL CREATED: Dr Expense/Asset / Cr Accounts Payable ──
 function glPostAPBill(ap) {
     if (!ap || !(ap.total > 0)) return;
-    const ref = ap.ref || ('AP-' + ap.id);
+    // Always include ap.id to guarantee uniqueness
+    const ref = (ap.ref ? ap.ref + '-' + ap.id : 'AP-' + ap.id);
     if (_glEntryExists(ref, 'credit')) return;
     postJournalEntry(
         ap.date,
@@ -2930,7 +2806,7 @@ function glPostAPPayment(ap, previousPaid) {
     if (!ap) return;
     const newAmount = (ap.paid || 0) - (previousPaid || 0);
     if (newAmount <= 0) return;
-    const ref = `APMT-${ap.ref || ap.id}-${Date.now()}`;
+    const ref = `APMT-${ap.id}-${Date.now()}`;
     postJournalEntry(
         new Date().toISOString().slice(0,10),
         ref,
@@ -2945,7 +2821,8 @@ function glPostAPPayment(ap, previousPaid) {
 // ── CASH TRANSACTION: route based on type ──
 function glPostCashTransaction(tx) {
     if (!tx || !(tx.amount > 0)) return;
-    const ref = tx.ref || ('CB-' + tx.id);
+    // Always include tx.id to guarantee uniqueness
+    const ref = (tx.ref ? tx.ref + '-' + tx.id : 'CB-' + tx.id);
     if (_glEntryExists(ref, 'debit') || _glEntryExists(ref, 'credit')) return;
     const isIn = ['Cash In', 'Bank Deposit'].includes(tx.type);
     if (isIn) {
@@ -3124,6 +3001,7 @@ function renderGL(isAdmin) {
                     <th style="min-width:110px; text-align:right;">Debit (PKR)</th>
                     <th style="min-width:110px; text-align:right;">Credit (PKR)</th>
                     <th style="min-width:120px; text-align:right;">Running Balance</th>
+                    ${isAdmin ? '<th style="min-width:90px;">Actions</th>' : ''}
                 </tr>
             </thead>
             <tbody>
@@ -3144,6 +3022,7 @@ function renderGL(isAdmin) {
                         <td style="text-align:right; font-weight:${e.debit>0?'700':'400'}; color:${e.debit>0?'var(--success)':'var(--text-muted)'}; font-size:13px;">${e.debit>0?(parseFloat(e.debit)).toLocaleString('en-PK',{minimumFractionDigits:2}):'—'}</td>
                         <td style="text-align:right; font-weight:${e.credit>0?'700':'400'}; color:${e.credit>0?'var(--purple)':'var(--text-muted)'}; font-size:13px;">${e.credit>0?(parseFloat(e.credit)).toLocaleString('en-PK',{minimumFractionDigits:2}):'—'}</td>
                         <td style="text-align:right; font-weight:700; color:${balColor}; font-size:13px; font-family:monospace;">${(parseFloat(e.runningBalance)||0).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                        ${isAdmin ? `<td><div class="btn-action-group"><button class="btn-sm" title="Edit entry" onclick="openEditGLEntry('${e.id}')">✏️</button><button class="btn-sm danger" title="Delete entry" onclick="deleteGLEntry('${e.id}')">🗑</button></div></td>` : ''}
                     </tr>`;
                 }).join('')}
             </tbody>
@@ -3223,6 +3102,7 @@ function renderTB(isAdmin) {
                     <th style="min-width:100px;">Category</th>
                     <th style="min-width:140px; text-align:right;">Debit Balance</th>
                     <th style="min-width:140px; text-align:right;">Credit Balance</th>
+                    <th style="min-width:80px;">Ledger</th>
                 </tr>
             </thead>
             <tbody>
@@ -3243,6 +3123,7 @@ function renderTB(isAdmin) {
                         <td style="text-align:right; font-weight:${r.creditBalance>0?'700':'400'}; color:${r.creditBalance>0?'var(--purple)':'var(--text-muted)'}; font-size:13px;">
                             ${r.creditBalance>0?(r.creditBalance).toLocaleString('en-PK',{minimumFractionDigits:2}):'—'}
                         </td>
+                        <td><button class="btn-sm" title="View in General Ledger" onclick="drillToGL('${r.code}')">📖 View</button></td>
                     </tr>`;
                 }).join('')}
             </tbody>
@@ -3300,7 +3181,109 @@ function printTB() {
     w.document.close(); w.print();
 }
 
-// ── END OF DOUBLE-ENTRY ACCOUNTING ENGINE ────────────────────────────────────
+// ── GL ENTRY EDIT / DELETE ──
+function openEditGLEntry(id) {
+    if (!requireAdmin('edit general ledger entries')) return;
+    const entry = STATE.generalLedger.find(e => String(e.id) === String(id));
+    if (!entry) return;
+
+    // Build account options from COA
+    const accountOptions = [];
+    for (const [type] of Object.entries(COA_META)) {
+        for (const acc of (STATE.chartOfAccounts[type] || [])) {
+            accountOptions.push({ code: acc.code, name: acc.name, type });
+        }
+    }
+    // Include GL accounts not in COA
+    for (const e of STATE.generalLedger) {
+        if (!accountOptions.find(a => String(a.code) === String(e.accountCode))) {
+            accountOptions.push({ code: e.accountCode, name: e.accountName, type: e.accountType });
+        }
+    }
+    accountOptions.sort((a, b) => (parseInt(a.code)||0) - (parseInt(b.code)||0));
+
+    document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal-box" style="max-width:560px;">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-title">✏️ Edit GL Entry</div>
+            <div style="background:var(--warning-bg); border:1px solid rgba(245,158,11,0.3); border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:var(--warning);">
+                ⚠️ Editing GL entries directly affects Trial Balance and Chart of Accounts balances. Proceed carefully.
+            </div>
+            <div class="form-grid">
+                <div><label>Date</label><input type="date" id="gl_edit_date" value="${escapeAttr(entry.date||'')}"></div>
+                <div>
+                    <label>Account</label>
+                    <select id="gl_edit_account" style="margin-top:8px;">
+                        ${accountOptions.map(a => `<option value="${a.code}|${escapeAttr(a.name)}|${a.type}" ${String(a.code)===String(entry.accountCode)?'selected':''}>${a.code} — ${a.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div><label>Debit (PKR)</label><input type="number" id="gl_edit_debit" step="0.01" placeholder="0.00" value="${entry.debit||0}"></div>
+                <div><label>Credit (PKR)</label><input type="number" id="gl_edit_credit" step="0.01" placeholder="0.00" value="${entry.credit||0}"></div>
+                <div class="form-full"><label>Description</label><input id="gl_edit_desc" placeholder="Description" value="${escapeAttr(entry.description||'')}"></div>
+                <div class="form-full"><label>Reference</label><input id="gl_edit_ref" placeholder="e.g. AR-001, PMT-005" value="${escapeAttr(entry.reference||'')}"></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn-primary" style="margin-top:0;" onclick="saveGLEntryEdit('${entry.id}')">Save Changes</button>
+                <button class="btn-outline" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function saveGLEntryEdit(id) {
+    if (!requireAdmin('edit general ledger entries')) return;
+    const idx = STATE.generalLedger.findIndex(e => String(e.id) === String(id));
+    if (idx === -1) return;
+
+    const date = document.getElementById('gl_edit_date').value;
+    const accountVal = document.getElementById('gl_edit_account').value;
+    const [accountCode, accountName, accountType] = accountVal.split('|');
+    const debit  = parseFloat(document.getElementById('gl_edit_debit').value)  || 0;
+    const credit = parseFloat(document.getElementById('gl_edit_credit').value) || 0;
+    const description = document.getElementById('gl_edit_desc').value.trim();
+    const reference   = document.getElementById('gl_edit_ref').value.trim();
+
+    if (debit > 0 && credit > 0) {
+        showToast('An entry cannot have both Debit and Credit. Set one to 0.', 'error');
+        return;
+    }
+    if (debit === 0 && credit === 0) {
+        showToast('Enter either a Debit or Credit amount.', 'error');
+        return;
+    }
+
+    STATE.generalLedger[idx] = {
+        ...STATE.generalLedger[idx],
+        date, accountCode, accountName, accountType, debit, credit, description, reference
+    };
+
+    syncCOABalancesFromGL();
+    const synced = await persistAccountingNow('GL entry updated!');
+    closeModal();
+    render();
+    if (synced) await syncData(true);
+}
+
+function deleteGLEntry(id) {
+    if (!requireAdmin('delete general ledger entries')) return;
+    if (!confirm('Delete this GL entry? This will affect Trial Balance and Chart of Accounts balances.')) return;
+    STATE.generalLedger = STATE.generalLedger.filter(e => String(e.id) !== String(id));
+    syncCOABalancesFromGL();
+    persistAccountingNow('GL entry deleted!').then(async synced => {
+        render();
+        if (synced) await syncData(true);
+    });
+}
+
+// Drill from Trial Balance into GL filtered to a specific account code
+function drillToGL(accountCode) {
+    STATE.tab = 'gl';
+    STATE.glAccountFilter = String(accountCode);
+    STATE.glDateFrom = '';
+    STATE.glDateTo = '';
+    render();
+}
 function render() {
     captureFocusState();
     const app = document.getElementById('app');
