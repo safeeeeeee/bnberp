@@ -2430,6 +2430,18 @@ async function saveARPayment(id) {
 function deleteAR(id) {
     if (!requireAdmin('edit accounts receivable')) return;
     if (!confirm('Delete this receivable record?')) return;
+    const ar = STATE.accountsReceivable.find(r => String(r.id)===String(id));
+    if (ar) {
+        // Remove all GL entries tied to this AR (invoice + any payments)
+        const arRef = ar.inv || ('AR-' + ar.id);
+        const arIdStr = String(ar.id);
+        STATE.generalLedger = STATE.generalLedger.filter(e => {
+            const ref = String(e.reference || '');
+            // Remove the invoice entry (exact ref match) and any payment entries (PMT-<inv|id>-...)
+            return ref !== arRef && !ref.startsWith('PMT-' + arRef + '-') && !ref.startsWith('PMT-' + arIdStr + '-');
+        });
+        syncCOABalancesFromGL();
+    }
     STATE.accountsReceivable = STATE.accountsReceivable.filter(r => String(r.id)!==String(id));
     persistAccountingNow('Receivable deleted!').then(async synced => {
         render();
@@ -2544,6 +2556,18 @@ async function saveAPPayment(id) {
 function deleteAP(id) {
     if (!requireAdmin('edit accounts payable')) return;
     if (!confirm('Delete this payable record?')) return;
+    const ap = STATE.accountsPayable.find(p => String(p.id)===String(id));
+    if (ap) {
+        // Remove all GL entries tied to this AP (bill + any payments)
+        const apRef = ap.ref || ('AP-' + ap.id);
+        const apIdStr = String(ap.id);
+        STATE.generalLedger = STATE.generalLedger.filter(e => {
+            const ref = String(e.reference || '');
+            // Remove the bill entry (exact ref match) and any payment entries (APMT-<ref|id>-...)
+            return ref !== apRef && !ref.startsWith('APMT-' + apRef + '-') && !ref.startsWith('APMT-' + apIdStr + '-');
+        });
+        syncCOABalancesFromGL();
+    }
     STATE.accountsPayable = STATE.accountsPayable.filter(p => String(p.id)!==String(id));
     persistAccountingNow('Payable deleted!').then(async synced => {
         render();
