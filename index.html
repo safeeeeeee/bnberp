@@ -10,6 +10,16 @@
     import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     window.__firebaseModules = { initializeApp, getApps, getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, getAuth, signInAnonymously, onAuthStateChanged };
+    // Signal that Firebase modules are ready
+    window.__firebaseReady = true;
+    if (window.__firebaseReadyResolve) window.__firebaseReadyResolve();
+    </script>
+    <script>
+    // Create a promise that resolves when Firebase modules are loaded
+    window.__firebaseReadyPromise = new Promise(resolve => {
+        if (window.__firebaseReady) { resolve(); return; }
+        window.__firebaseReadyResolve = resolve;
+    });
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -347,16 +357,9 @@ const FALLBACK_USERS = [
 const GOOGLE_SHEET_ID = '1yTvYYjMTA7hOqz3lcaB7mxqE9sUR4-EGLDfHvlmDchY';
 
 // ── FIREBASE v10 MODULAR SDK (Firestore) — Main App Block ──
-const {
-    initializeApp: _initApp, getApps: _getApps,
-    getFirestore: _getFirestore,
-    collection: _col, doc: _doc,
-    setDoc: _setDoc, getDoc: _getDoc, getDocs: _getDocs,
-    updateDoc: _updateDoc, deleteDoc: _deleteDoc,
-    onSnapshot: _onSnapshot,
-    query: _query, where: _where,
-    getAuth: _getAuth, signInAnonymously: _signInAnon, onAuthStateChanged: _onAuthChanged
-} = window.__firebaseModules || {};
+// These are populated after __firebaseReadyPromise resolves
+let _initApp, _getApps, _getFirestore, _col, _doc, _setDoc, _getDoc, _getDocs,
+    _updateDoc, _deleteDoc, _onSnapshot, _query, _where, _getAuth, _signInAnon, _onAuthChanged;
 
 const firebaseConfigMain = {
     apiKey: "AIzaSyBBimqGeQC79E5mXRGefDpy8GaJftpZOBk",
@@ -368,20 +371,60 @@ const firebaseConfigMain = {
     measurementId: "G-F2M8B1VC7W"
 };
 
-// Initialize Firebase app (avoid duplicate init)
-const _mainApp = (_getApps && _getApps().length) ? _getApps()[0] : (_initApp ? _initApp(firebaseConfigMain) : null);
-// Firestore instance — replaces firebase.database()
-const mainDb = (_getFirestore && _mainApp) ? _getFirestore(_mainApp) : null;
-const _mainAuth = (_getAuth && _mainApp) ? _getAuth(_mainApp) : null;
+let mainDb = null;
+let _mainAuth = null;
 let _currentUser = null;
 let firebaseAuthPromise = null;
+let _firebaseInitialized = false;
 
-// Keep track of signed-in user for auth checks
-if (_mainAuth && _onAuthChanged) {
-    _onAuthChanged(_mainAuth, (user) => { _currentUser = user; });
+function _initFirebaseFromModules() {
+    if (_firebaseInitialized) return;
+    const mods = window.__firebaseModules;
+    if (!mods) return;
+    _initApp = mods.initializeApp;
+    _getApps = mods.getApps;
+    _getFirestore = mods.getFirestore;
+    _col = mods.collection;
+    _doc = mods.doc;
+    _setDoc = mods.setDoc;
+    _getDoc = mods.getDoc;
+    _getDocs = mods.getDocs;
+    _updateDoc = mods.updateDoc;
+    _deleteDoc = mods.deleteDoc;
+    _onSnapshot = mods.onSnapshot;
+    _query = mods.query;
+    _where = mods.where;
+    _getAuth = mods.getAuth;
+    _signInAnon = mods.signInAnonymously;
+    _onAuthChanged = mods.onAuthStateChanged;
+    const _mainApp = (_getApps && _getApps().length) ? _getApps()[0] : (_initApp ? _initApp(firebaseConfigMain) : null);
+    mainDb = (_getFirestore && _mainApp) ? _getFirestore(_mainApp) : null;
+    _mainAuth = (_getAuth && _mainApp) ? _getAuth(_mainApp) : null;
+    if (_mainAuth && _onAuthChanged) {
+        _onAuthChanged(_mainAuth, (user) => { _currentUser = user; });
+    }
+    _firebaseInitialized = true;
+}
+
+// Initialize immediately if modules already loaded (shouldn't happen but safe)
+if (window.__firebaseModules) _initFirebaseFromModules();
+
+// Also initialize once the module promise resolves
+if (window.__firebaseReadyPromise) {
+    window.__firebaseReadyPromise.then(() => {
+        _initFirebaseFromModules();
+    });
+}
+
+async function ensureFirebaseReady() {
+    if (!_firebaseInitialized) {
+        if (window.__firebaseReadyPromise) await window.__firebaseReadyPromise;
+        _initFirebaseFromModules();
+    }
 }
 
 async function ensureFirebaseAuth() {
+    await ensureFirebaseReady();
     if (!mainDb || !_mainAuth || !_signInAnon) return;
     if (_currentUser) return;
     if (!firebaseAuthPromise) {
@@ -450,6 +493,14 @@ let STATE = {
     glDateFrom: '',
     glDateTo: '',
     tbSearch: '',
+    mrClients: [],
+    mrPayments: [],
+    mrSearch: '',
+    mrDateFrom: '',
+    mrDateTo: '',
+    mrSelectedClientId: null,
+    mrLoaded: false,
+    mrLoading: false,
 };
 let LAST_TASKS_HASH = '';
 let SEARCH_RENDER_TIMER = null;
@@ -1066,6 +1117,7 @@ async function gasPost(payload) {
 }
 
 async function postRow(row) {
+    await ensureFirebaseReady();
     if (mainDb) {
         await ensureFirebaseAuth();
         const id = row?.id != null ? String(row.id) : String(Date.now());
@@ -1080,6 +1132,7 @@ async function postRow(row) {
 }
 
 async function patchRow(id, patch) {
+    await ensureFirebaseReady();
     if (mainDb) {
         await ensureFirebaseAuth();
         const targetId = String(id ?? patch?.id ?? '');
@@ -1093,6 +1146,7 @@ async function patchRow(id, patch) {
 }
 
 async function deleteRow(id) {
+    await ensureFirebaseReady();
     if (mainDb) {
         await ensureFirebaseAuth();
         const targetId = String(id ?? '');
@@ -2027,23 +2081,46 @@ async function saveEditCOAAccount(type, id) {
     if (synced) await syncData(true);
 }
 
-function removeAccount(type, id) {
+async function removeAccount(type, id) {
     if (!requireAdmin('delete accounts')) return;
     migrateCOA();
     const acc = (STATE.chartOfAccounts[type]||[]).find(a => String(a.id)===String(id));
     if (!acc) return;
     if (!confirm(`Delete "${acc.name}"? This cannot be undone.`)) return;
     STATE.chartOfAccounts[type] = STATE.chartOfAccounts[type].filter(a => String(a.id)!==String(id));
-    persistAccountingNow('Account deleted!').then(async synced => { render(); if (synced) await syncData(true); });
+    // Patch allData immediately so that a subsequent syncData hydration reads the post-delete state
+    _patchSyncRowsIntoAllData();
+    try {
+        await ensureFirebaseAuth();
+        // Write the updated COA directly to Firestore so it's authoritative before any re-sync
+        const coaRow = buildSyncRow('accounting', 'coa', STATE.chartOfAccounts);
+        await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, String(coaRow.id)), coaRow);
+        saveAccounting();
+        showToast('Account deleted!');
+    } catch(e) {
+        console.error('COA delete sync failed', e);
+        showToast('Deleted locally, sync failed.', 'error');
+    }
+    render();
 }
 
-function toggleCOAActive(type, id) {
+async function toggleCOAActive(type, id) {
     if (!requireAdmin('edit accounts')) return;
     migrateCOA();
     const acc = (STATE.chartOfAccounts[type]||[]).find(a => String(a.id)===String(id));
     if (!acc) return;
     acc.active = acc.active === false ? true : false;
-    persistAccountingNow(acc.active ? 'Account activated!' : 'Account deactivated!').then(async synced => { render(); if (synced) await syncData(true); });
+    _patchSyncRowsIntoAllData();
+    try {
+        await ensureFirebaseAuth();
+        const coaRow = buildSyncRow('accounting', 'coa', STATE.chartOfAccounts);
+        await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, String(coaRow.id)), coaRow);
+        saveAccounting();
+        showToast(acc.active ? 'Account activated!' : 'Account deactivated!');
+    } catch(e) {
+        showToast('Updated locally, sync failed.', 'error');
+    }
+    render();
 }
 
 function exportCOA() {
@@ -3379,6 +3456,9 @@ function render() {
                 <button class="nav-btn ${STATE.tab==='tb'?'active':''}" onclick="STATE.tab='tb';render()">
                     <span class="nav-icon">⚖️</span> Trial Balance
                 </button>
+                <button class="nav-btn ${STATE.tab==='mr'?'active':''}" onclick="STATE.tab='mr';STATE.mrLoaded=false;STATE.mrLoading=false;loadMRData().then(()=>render());render()">
+                    <span class="nav-icon">🔄</span> Monthly Recovery
+                </button>
 
                 ${isAdmin ? `
                 <hr class="sidebar-divider">
@@ -4193,7 +4273,380 @@ function renderTab(users, tasks) {
         </div>` : ''}`;
     }
 
+    // ── MONTHLY RECOVERY ──
+    if (STATE.tab==='mr') {
+        return renderMR(isAdmin);
+    }
+
     return '';
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── MONTHLY RECOVERY ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const MR_CLIENTS_COL  = 'monthlyRecovery';
+const MR_PAYMENTS_COL = 'mrPayments';
+const AR_MR_COL       = 'accountsReceivable_mr';
+
+async function loadMRData() {
+    if (STATE.mrLoading || STATE.mrLoaded) return;
+    STATE.mrLoading = true;
+    try {
+        await ensureFirebaseReady();
+        if (!mainDb) {
+            // Firebase not available - mark as loaded with empty data so UI renders without looping
+            STATE.mrClients  = [];
+            STATE.mrPayments = [];
+            STATE.mrLoaded   = true;
+            STATE.mrLoading  = false;
+            showToast('Firebase not connected. Monthly Recovery unavailable.', 'error');
+            return;
+        }
+        await ensureFirebaseAuth();
+        const [clientsSnap, paymentsSnap] = await Promise.all([
+            _getDocs(_col(mainDb, MR_CLIENTS_COL)),
+            _getDocs(_col(mainDb, MR_PAYMENTS_COL))
+        ]);
+        STATE.mrClients  = [];
+        STATE.mrPayments = [];
+        clientsSnap.forEach(d => STATE.mrClients.push({ ...d.data(), _fsId: d.id }));
+        paymentsSnap.forEach(d => STATE.mrPayments.push({ ...d.data(), _fsId: d.id }));
+        STATE.mrLoaded  = true;
+    } catch(e) {
+        console.error('loadMRData error', e);
+        showToast('Failed to load Monthly Recovery data: ' + (e.message || e), 'error');
+        // On error also mark loaded to prevent infinite retry loop
+        STATE.mrLoaded = true;
+    } finally {
+        STATE.mrLoading = false;
+    }
+}
+
+function mrComputeBalance(client) {
+    const now = new Date();
+    const joinDate = new Date(client.joinedAt || client.createdAt || now);
+    const dayOfMonth = parseInt(client.dueDay) || 1;
+    const baseDue = parseFloat(client.amountDue) || 0;
+    let cyclesDue = 0;
+    let d = new Date(joinDate.getFullYear(), joinDate.getMonth(), 1);
+    const nowMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    while (d <= nowMonth) {
+        const dueDateThisMonth = new Date(d.getFullYear(), d.getMonth(), dayOfMonth);
+        if (dueDateThisMonth <= now) cyclesDue++;
+        d.setMonth(d.getMonth() + 1);
+    }
+    const totalDue = baseDue * cyclesDue;
+    const clientPayments = STATE.mrPayments.filter(p => p.clientId === client.id);
+    const totalPaid = clientPayments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+    const remaining = Math.max(0, totalDue - totalPaid);
+    let status = 'Unpaid';
+    if (remaining <= 0 && totalDue > 0) status = 'Paid';
+    else if (totalPaid > 0 && remaining > 0) status = 'Partial';
+    return { totalDue, totalPaid, remaining, status, cyclesDue, baseDue };
+}
+
+function openAddMRClient() {
+    if (!requireAdmin('add monthly recovery clients')) return;
+    document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal-box" style="max-width:480px;">
+            <button class="modal-close" onclick="closeModal()">x</button>
+            <div class="modal-title">+ Add Recovery Client</div>
+            <div class="form-grid">
+                <div class="form-full"><label>Client Name *</label><input id="mr_name" placeholder="Full client name"></div>
+                <div><label>Monthly Amount Due (PKR) *</label><input type="number" id="mr_amount" placeholder="0.00" step="0.01"></div>
+                <div><label>Due Day of Month (1-28)</label><input type="number" id="mr_day" placeholder="1-28" min="1" max="28" value="1"></div>
+                <div class="form-full"><label>Description / Notes</label><textarea id="mr_desc" rows="2" placeholder="Service description..."></textarea></div>
+                <div class="form-full"><label>Start Date</label><input type="date" id="mr_start"></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn-primary" style="margin-top:0;" onclick="saveMRClient()">Add Client</button>
+                <button class="btn-outline" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('mr_start').valueAsDate = new Date();
+}
+
+async function saveMRClient() {
+    if (!requireAdmin('add monthly recovery clients')) return;
+    await ensureFirebaseReady();
+    if (!mainDb) { showToast('Firebase not connected. Cannot save client.', 'error'); return; }
+    const name   = document.getElementById('mr_name').value.trim();
+    const amount = parseFloat(document.getElementById('mr_amount').value) || 0;
+    const day    = parseInt(document.getElementById('mr_day').value) || 1;
+    const desc   = document.getElementById('mr_desc').value.trim();
+    const start  = document.getElementById('mr_start').value;
+    if (!name || !amount) { showToast('Name and amount are required', 'error'); return; }
+    const id = String(Date.now());
+    const client = { id, name, amountDue: amount, dueDay: day, description: desc, joinedAt: start || new Date().toISOString().slice(0,10), createdAt: nowStamp(), createdBy: STATE.user ? STATE.user.name : '' };
+    try {
+        await ensureFirebaseAuth();
+        await _setDoc(_doc(mainDb, MR_CLIENTS_COL, id), client);
+        STATE.mrClients.push({ ...client, _fsId: id });
+        // Create AR entry for this client
+        const arEntry = { id: 'MR_' + id, client: name, inv: 'MR-' + id, date: start || new Date().toISOString().slice(0,10), due: '', total: amount, received: 0, notes: 'Monthly Recovery - ' + (desc || name), status: 'Unpaid', linkedMRClientId: id };
+        STATE.accountsReceivable.push(arEntry);
+        glPostARInvoice(arEntry);
+        saveAccounting();
+        await Promise.all([
+            _setDoc(_doc(mainDb, AR_MR_COL, arEntry.id), arEntry),
+            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable))
+        ]);
+        showToast('Client added!');
+        closeModal();
+        render();
+    } catch(e) { console.error(e); showToast('Failed to save client', 'error'); }
+}
+
+async function deleteMRClient(clientId) {
+    if (!requireAdmin('delete monthly recovery clients')) return;
+    const client = STATE.mrClients.find(c => c.id === clientId);
+    if (!client) return;
+    if (!confirm('Delete client "' + client.name + '"? All payment history will also be deleted.')) return;
+    try {
+        await ensureFirebaseAuth();
+        await _deleteDoc(_doc(mainDb, MR_CLIENTS_COL, clientId));
+        const clientPmts = STATE.mrPayments.filter(p => p.clientId === clientId);
+        await Promise.all(clientPmts.map(p => _deleteDoc(_doc(mainDb, MR_PAYMENTS_COL, p.id))));
+        STATE.mrClients  = STATE.mrClients.filter(c => c.id !== clientId);
+        STATE.mrPayments = STATE.mrPayments.filter(p => p.clientId !== clientId);
+        STATE.accountsReceivable = STATE.accountsReceivable.filter(r => r.linkedMRClientId !== clientId && r.id !== 'MR_' + clientId);
+        try { await _deleteDoc(_doc(mainDb, AR_MR_COL, 'MR_' + clientId)); } catch(e2) {}
+        saveAccounting();
+        await upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable));
+        showToast('Client deleted!');
+        render();
+    } catch(e) { console.error(e); showToast('Delete failed', 'error'); }
+}
+
+function openMRPayment(clientId) {
+    if (!requireAdmin('record payments')) return;
+    const client = STATE.mrClients.find(c => c.id === clientId);
+    if (!client) return;
+    const bal = mrComputeBalance(client);
+    document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal-box" style="max-width:440px;">
+            <button class="modal-close" onclick="closeModal()">x</button>
+            <div class="modal-title">Payment - ${client.name}</div>
+            <div style="background:var(--navy-800);border-radius:8px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><div style="font-size:11px;color:var(--text-muted);">TOTAL DUE</div><div style="font-weight:700;color:var(--gold);">${fmt(bal.totalDue)}</div></div>
+                <div><div style="font-size:11px;color:var(--text-muted);">PAID SO FAR</div><div style="font-weight:700;color:var(--success);">${fmt(bal.totalPaid)}</div></div>
+                <div><div style="font-size:11px;color:var(--text-muted);">REMAINING</div><div style="font-weight:700;color:var(--danger);">${fmt(bal.remaining)}</div></div>
+                <div><div style="font-size:11px;color:var(--text-muted);">STATUS</div><div><span class="badge badge-${bal.status.toLowerCase()}">${bal.status}</span></div></div>
+            </div>
+            <label>Amount Received (PKR) *</label>
+            <input type="number" id="mrp_amount" placeholder="0.00" step="0.01" oninput="mrLiveBalance(${bal.remaining})">
+            <div id="mrp_balance_info" style="font-size:12px;color:var(--text-secondary);margin-top:6px;"></div>
+            <label>Payment Note</label>
+            <input id="mrp_note" placeholder="e.g. Bank transfer, cash...">
+            <label>Payment Date</label>
+            <input type="date" id="mrp_date">
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn-primary" style="margin-top:0;" onclick="saveMRPayment('${clientId}')">Save Payment</button>
+                <button class="btn-sm success" style="margin-top:0;" onclick="markMRFullyPaid('${clientId}')">Mark Fully Paid</button>
+                <button class="btn-outline" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('mrp_date').valueAsDate = new Date();
+    mrLiveBalance(bal.remaining);
+}
+
+function mrLiveBalance(remaining) {
+    const amt = parseFloat(document.getElementById('mrp_amount') ? document.getElementById('mrp_amount').value : 0) || 0;
+    const after = remaining - amt;
+    const el = document.getElementById('mrp_balance_info');
+    if (el) el.innerHTML = 'Remaining after this payment: <strong style="color:' + (after<=0?'var(--success)':'var(--warning)') + ';">' + fmt(Math.max(0, after)) + '</strong>';
+}
+
+async function saveMRPayment(clientId) {
+    if (!requireAdmin('record payments')) return;
+    const client = STATE.mrClients.find(c => c.id === clientId);
+    if (!client) return;
+    const amount = parseFloat(document.getElementById('mrp_amount').value) || 0;
+    const note   = document.getElementById('mrp_note').value.trim();
+    const date   = document.getElementById('mrp_date').value || new Date().toISOString().slice(0,10);
+    if (amount <= 0) { showToast('Enter a valid payment amount', 'error'); return; }
+    const id = String(Date.now());
+    const payment = { id, clientId, amount, note, date, createdAt: nowStamp() };
+    try {
+        await ensureFirebaseReady();
+        await ensureFirebaseAuth();
+        await _setDoc(_doc(mainDb, MR_PAYMENTS_COL, id), payment);
+        STATE.mrPayments.push({ ...payment, _fsId: id });
+        // GL entry
+        glPostARPayment({ id: 'MR_' + clientId, client: client.name, inv: 'MR-' + clientId, received: amount, total: client.amountDue }, 0);
+        // Update AR entry
+        const arEntry = STATE.accountsReceivable.find(r => r.linkedMRClientId === clientId);
+        if (arEntry) {
+            const allPaid = STATE.mrPayments.filter(p => p.clientId === clientId).reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
+            const newBal = mrComputeBalance(client);
+            arEntry.received = allPaid;
+            arEntry.total    = newBal.totalDue;
+            arEntry.status   = allPaid >= newBal.totalDue ? 'Paid' : allPaid > 0 ? 'Partial' : 'Unpaid';
+            try { await _setDoc(_doc(mainDb, AR_MR_COL, arEntry.id), arEntry); } catch(e2) {}
+            saveAccounting();
+            await upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable));
+        }
+        showToast('Payment recorded!');
+        closeModal();
+        render();
+    } catch(e) { console.error(e); showToast('Failed to save payment', 'error'); }
+}
+
+async function markMRFullyPaid(clientId) {
+    if (!requireAdmin('record payments')) return;
+    const client = STATE.mrClients.find(c => c.id === clientId);
+    if (!client) return;
+    const bal = mrComputeBalance(client);
+    if (bal.remaining <= 0) { showToast('Already fully paid!', 'info'); closeModal(); return; }
+    const id = String(Date.now());
+    const payment = { id, clientId, amount: bal.remaining, note: 'Full payment', date: new Date().toISOString().slice(0,10), createdAt: nowStamp() };
+    try {
+        await ensureFirebaseReady();
+        await ensureFirebaseAuth();
+        await _setDoc(_doc(mainDb, MR_PAYMENTS_COL, id), payment);
+        STATE.mrPayments.push({ ...payment, _fsId: id });
+        glPostARPayment({ id: 'MR_' + clientId, client: client.name, inv: 'MR-' + clientId, received: bal.remaining, total: client.amountDue }, 0);
+        const arEntry = STATE.accountsReceivable.find(r => r.linkedMRClientId === clientId);
+        if (arEntry) {
+            const allPaid = STATE.mrPayments.filter(p => p.clientId === clientId).reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
+            arEntry.received = allPaid;
+            arEntry.total    = bal.totalDue;
+            arEntry.status   = 'Paid';
+            try { await _setDoc(_doc(mainDb, AR_MR_COL, arEntry.id), arEntry); } catch(e2) {}
+            saveAccounting();
+            await upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable));
+        }
+        showToast('Marked as fully paid!');
+        closeModal();
+        render();
+    } catch(e) { console.error(e); showToast('Failed', 'error'); }
+}
+
+function openMRPaymentHistory(clientId) {
+    const client = STATE.mrClients.find(c => c.id === clientId);
+    if (!client) return;
+    const bal = mrComputeBalance(client);
+    const asc = [...STATE.mrPayments.filter(p => p.clientId === clientId)].sort((a,b) => getTimeValue(a.date) - getTimeValue(b.date));
+    let runBal = bal.totalDue;
+    const rows = asc.map(p => {
+        runBal -= (parseFloat(p.amount) || 0);
+        const afterBal = Math.max(0, runBal);
+        return '<tr><td style="font-size:12px;">' + formatDateTime(p.date) + '</td><td class="amount-green">' + fmt(p.amount) + '</td><td class="' + (afterBal>0?'amount-red':'amount-green') + '">' + fmt(afterBal) + '</td><td style="color:var(--text-secondary);font-size:12px;">' + (p.note || '-') + '</td></tr>';
+    }).join('');
+    document.getElementById('modal-container').innerHTML =
+    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal-box" style="max-width:600px;">' +
+    '<button class="modal-close" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Payment History - ' + client.name + '</div>' +
+    '<div style="background:var(--navy-800);border-radius:8px;padding:12px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">' +
+    '<div><div style="font-size:11px;color:var(--text-muted);">TOTAL DUE</div><div style="font-weight:700;color:var(--gold);">' + fmt(bal.totalDue) + '</div></div>' +
+    '<div><div style="font-size:11px;color:var(--text-muted);">TOTAL PAID</div><div style="font-weight:700;color:var(--success);">' + fmt(bal.totalPaid) + '</div></div>' +
+    '<div><div style="font-size:11px;color:var(--text-muted);">BALANCE</div><div style="font-weight:700;color:var(--danger);">' + fmt(bal.remaining) + '</div></div>' +
+    '</div>' +
+    (asc.length === 0 ? '<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">No payments recorded yet.</div></div>' :
+    '<div style="overflow-x:auto;"><table><thead><tr><th>Date</th><th>Amount</th><th>Remaining After</th><th>Note</th></tr></thead><tbody>' + rows + '</tbody></table></div>') +
+    '<div style="margin-top:16px;"><button class="btn-outline" onclick="closeModal()">Close</button></div>' +
+    '</div></div>';
+}
+
+function renderMR(isAdmin) {
+    if (!STATE.mrLoaded) {
+        // Trigger load only if not already loading; the .then(render) callback will re-render once data arrives
+        if (!STATE.mrLoading) {
+            loadMRData().then(() => render());
+        }
+        return '<div class="card"><div style="text-align:center;padding:40px;color:var(--text-muted);">Loading Monthly Recovery data...</div></div>';
+    }
+    const mrDateFrom = STATE.mrDateFrom;
+    const mrDateTo   = STATE.mrDateTo;
+    const search     = (STATE.mrSearch || '').toLowerCase().trim();
+    let clients = STATE.mrClients;
+    if (search) clients = clients.filter(c => (c.name||'').toLowerCase().includes(search) || (c.description||'').toLowerCase().includes(search));
+    const allBalances = clients.map(c => ({ client: c, bal: mrComputeBalance(c) }));
+    const totalDue       = allBalances.reduce((s, x) => s + x.bal.totalDue, 0);
+    const totalPaid      = allBalances.reduce((s, x) => s + x.bal.totalPaid, 0);
+    const totalRemaining = allBalances.reduce((s, x) => s + x.bal.remaining, 0);
+    const paidCount      = allBalances.filter(x => x.bal.status === 'Paid').length;
+    const partialCount   = allBalances.filter(x => x.bal.status === 'Partial').length;
+    const unpaidCount    = allBalances.filter(x => x.bal.status === 'Unpaid').length;
+    let filteredPayments = STATE.mrPayments;
+    if (mrDateFrom) filteredPayments = filteredPayments.filter(p => (p.date||'') >= mrDateFrom);
+    if (mrDateTo)   filteredPayments = filteredPayments.filter(p => (p.date||'') <= mrDateTo);
+
+    const tableRows = allBalances.map(function(x) {
+        const c = x.client; const bal = x.bal;
+        return '<tr>' +
+            '<td><div class="td-title">' + c.name + '</div>' +
+            (c.description ? '<div class="td-sub" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + c.description + '</div>' : '') +
+            '<div class="td-sub">Since ' + formatDateTime(c.joinedAt || c.createdAt) + '</div></td>' +
+            '<td class="amount-gold">' + fmt(c.amountDue) + '</td>' +
+            '<td style="color:var(--text-secondary);font-weight:600;">' + bal.cyclesDue + '</td>' +
+            '<td class="amount-gold">' + fmt(bal.totalDue) + '</td>' +
+            '<td class="amount-green">' + fmt(bal.totalPaid) + '</td>' +
+            '<td class="' + (bal.remaining>0?'amount-red':'amount-green') + '">' + fmt(bal.remaining) + '</td>' +
+            '<td><span class="badge badge-' + bal.status.toLowerCase() + '">' + bal.status + '</span></td>' +
+            '<td style="color:var(--text-secondary);">Day ' + (c.dueDay||1) + '</td>' +
+            (isAdmin ? '<td><div class="btn-action-group">' +
+                '<button class="btn-sm success" onclick="openMRPayment(\'' + c.id + '\')">Pay</button>' +
+                '<button class="btn-sm purple" onclick="openMRPaymentHistory(\'' + c.id + '\')">History</button>' +
+                '<button class="btn-sm danger" onclick="deleteMRClient(\'' + c.id + '\')">Del</button>' +
+                '</div></td>' : '') +
+        '</tr>';
+    }).join('');
+
+    const reportSection = (mrDateFrom || mrDateTo) ? (function() {
+        if (filteredPayments.length === 0) return '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No payments in this date range.</div></div>';
+        const reportTotal = filteredPayments.reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
+        const reportRows = sortByNewest(filteredPayments,'date').map(function(p) {
+            const c = STATE.mrClients.find(cl => cl.id === p.clientId);
+            return '<tr><td style="font-size:12px;">' + formatDateTime(p.date) + '</td><td class="td-title">' + (c ? c.name : '-') + '</td><td class="amount-green">' + fmt(p.amount) + '</td><td style="color:var(--text-secondary);font-size:12px;">' + (p.note||'-') + '</td></tr>';
+        }).join('');
+        return '<table><thead><tr><th>Date</th><th>Client</th><th>Amount</th><th>Note</th></tr></thead><tbody>' + reportRows + '</tbody></table>';
+    })() : null;
+
+    return '<div class="anim-fade-up">' +
+        '<div class="card-header" style="margin-bottom:20px;">' +
+            '<div><div class="card-title" style="font-size:20px;">Monthly Recovery</div>' +
+            '<div class="card-subtitle">Track recurring client payments — auto-accumulates unpaid balances month-to-month</div></div>' +
+            (isAdmin ? '<button class="btn-sm success" onclick="openAddMRClient()">+ Add Client</button>' : '') +
+        '</div>' +
+        '<div class="stats-row stagger" style="margin-bottom:22px;">' +
+            '<div class="stat-card"><div class="stat-label">Total Clients</div><div class="stat-val accent">' + clients.length + '</div></div>' +
+            '<div class="stat-card"><div class="stat-label">Total Due</div><div class="stat-val gold" style="font-size:18px;">' + fmt(totalDue) + '</div></div>' +
+            '<div class="stat-card"><div class="stat-label">Total Collected</div><div class="stat-val green" style="font-size:18px;">' + fmt(totalPaid) + '</div></div>' +
+            '<div class="stat-card"><div class="stat-label">Outstanding</div><div class="stat-val red" style="font-size:18px;">' + fmt(totalRemaining) + '</div></div>' +
+            '<div class="stat-card"><div class="stat-label">Fully Paid</div><div class="stat-val green">' + paidCount + '</div></div>' +
+            '<div class="stat-card"><div class="stat-label">Partial</div><div class="stat-val gold">' + partialCount + '</div></div>' +
+            '<div class="stat-card"><div class="stat-label">Unpaid</div><div class="stat-val red">' + unpaidCount + '</div></div>' +
+        '</div>' +
+        '<div class="card" style="margin-bottom:20px;padding:14px 18px;">' +
+            '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
+                '<input placeholder="Search clients..." value="' + escapeAttr(STATE.mrSearch) + '" oninput="setSearchValue(\'mrSearch\',this.value)" style="max-width:260px;margin-top:0;">' +
+                '<div style="display:flex;align-items:center;gap:8px;"><label style="font-size:11px;color:var(--text-secondary);margin:0;text-transform:none;">From</label>' +
+                '<input type="date" value="' + escapeAttr(mrDateFrom) + '" onchange="STATE.mrDateFrom=this.value;render()" style="margin-top:0;width:auto;"></div>' +
+                '<div style="display:flex;align-items:center;gap:8px;"><label style="font-size:11px;color:var(--text-secondary);margin:0;text-transform:none;">To</label>' +
+                '<input type="date" value="' + escapeAttr(mrDateTo) + '" onchange="STATE.mrDateTo=this.value;render()" style="margin-top:0;width:auto;"></div>' +
+                '<button class="btn-sm" onclick="STATE.mrDateFrom=\'\';STATE.mrDateTo=\'\';render()">Clear</button>' +
+            '</div>' +
+        '</div>' +
+        '<div class="card">' +
+            '<div class="card-header" style="margin-bottom:16px;"><div class="card-title">Clients (' + allBalances.length + ')</div></div>' +
+            (allBalances.length === 0
+                ? '<div class="empty"><div class="empty-icon">🔄</div><div class="empty-text">No clients yet.' + (isAdmin ? ' Add a client above.' : '') + '</div></div>'
+                : '<div style="overflow-x:auto;"><table><thead><tr><th>Client</th><th>Monthly Due</th><th>Cycles Due</th><th>Total Due</th><th>Paid</th><th>Remaining</th><th>Status</th><th>Due Day</th>' + (isAdmin ? '<th>Actions</th>' : '') + '</tr></thead><tbody>' + tableRows + '</tbody></table></div>') +
+        '</div>' +
+        (reportSection ? '<div class="card" style="margin-top:20px;">' +
+            '<div class="card-header" style="margin-bottom:16px;">' +
+                '<div><div class="card-title">Payment Report</div>' +
+                '<div class="card-subtitle">' + (mrDateFrom||'All time') + ' to ' + (mrDateTo||'Today') + ' &middot; ' + filteredPayments.length + ' payments &middot; Total: <span class="amount-green">' + fmt(filteredPayments.reduce((s,p)=>s+(parseFloat(p.amount)||0),0)) + '</span></div></div>' +
+            '</div>' + reportSection + '</div>' : '') +
+        '</div>';
 }
 
 render();
