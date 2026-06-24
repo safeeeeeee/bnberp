@@ -444,6 +444,8 @@ const LS_EXPENSE_TYPES = 'erp_expense_types';
 const LS_EXPENSES      = 'erp_expenses';
 const LS_OFFICE_EXPENSE_CASH = 'erp_office_expense_cash';
 const LS_GL = 'erp_general_ledger';
+const LS_CASE_TYPES = 'erp_case_types';
+const LS_ACCOUNTING_VERSION = 'erp_accounting_version';
 const SYNC_ROW_PREFIX = '__ERP_SYNC__';
 
 let STATE = {
@@ -489,6 +491,7 @@ let STATE = {
     expenses: JSON.parse(localStorage.getItem(LS_EXPENSES) || '[]'),
     officeExpenseCash: JSON.parse(localStorage.getItem(LS_OFFICE_EXPENSE_CASH) || '[]'),
     generalLedger: JSON.parse(localStorage.getItem(LS_GL) || '[]'),
+    caseTypes: JSON.parse(localStorage.getItem(LS_CASE_TYPES) || 'null'),
     glAccountFilter: 'all',
     glDateFrom: '',
     glDateTo: '',
@@ -505,14 +508,46 @@ let STATE = {
 let LAST_TASKS_HASH = '';
 let SEARCH_RENDER_TIMER = null;
 let ACCOUNTING_SYNC_TIMER = null;
+// ── ACCOUNTING VERSION GUARD ──
+// Every genuine local accounting edit bumps a monotonic version stored in
+// localStorage. Sync rows carry this version. On hydrate from the cloud we only
+// accept remote data when its version is >= our local version — this prevents a
+// stale background poll from clobbering a recent local edit ("old values coming
+// back on refresh").
+let SUPPRESS_VERSION_BUMP = false;
+function getLocalAccountingVersion() {
+    return parseInt(localStorage.getItem(LS_ACCOUNTING_VERSION) || '0', 10) || 0;
+}
+function setLocalAccountingVersion(v) {
+    localStorage.setItem(LS_ACCOUNTING_VERSION, String(v));
+}
+function bumpAccountingVersion() {
+    if (SUPPRESS_VERSION_BUMP) return getLocalAccountingVersion();
+    const v = Date.now();
+    setLocalAccountingVersion(v);
+    return v;
+}
+function syncRowVersion(row) {
+    if (!row) return 0;
+    if (row.v != null) return parseInt(row.v, 10) || 0;
+    return getTimeValue(row.completedAt || row.createdAt);
+}
 
+// Initial state setup must NOT count as a user edit, so suppress version bumps.
+// Initialization only normalizes localStorage — never bump the version or push
+// to the cloud here (that would risk a reload overwriting newer cloud data).
+SUPPRESS_VERSION_BUMP = true;
 if (!STATE.chartOfAccounts) {
     STATE.chartOfAccounts = defaultChartOfAccounts();
-    saveAccounting();
+    saveAccounting(true);
 }
 if (!STATE.expenseTypes) {
     STATE.expenseTypes = defaultExpenseTypes();
-    saveAccounting();
+    saveAccounting(true);
+}
+if (!Array.isArray(STATE.caseTypes) || STATE.caseTypes.length === 0) {
+    STATE.caseTypes = defaultCaseTypes();
+    saveAccounting(true);
 }
 STATE.accountsReceivable = dedupeById(STATE.accountsReceivable);
 STATE.accountsPayable = dedupeById(STATE.accountsPayable);
@@ -520,9 +555,11 @@ STATE.cashTransactions = dedupeById(STATE.cashTransactions);
 STATE.expenses = dedupeById(STATE.expenses);
 STATE.officeExpenseCash = dedupeById(STATE.officeExpenseCash);
 STATE.generalLedger = dedupeById(STATE.generalLedger);
-saveAccounting();
+saveAccounting(true);
+SUPPRESS_VERSION_BUMP = false;
 
-function saveAccounting() {
+function saveAccounting(skipCloud=false) {
+    bumpAccountingVersion();
     localStorage.setItem(LS_ACCOUNTS, JSON.stringify(STATE.chartOfAccounts));
     localStorage.setItem(LS_AR, JSON.stringify(STATE.accountsReceivable));
     localStorage.setItem(LS_AP, JSON.stringify(STATE.accountsPayable));
@@ -531,7 +568,8 @@ function saveAccounting() {
     localStorage.setItem(LS_EXPENSES, JSON.stringify(STATE.expenses));
     localStorage.setItem(LS_OFFICE_EXPENSE_CASH, JSON.stringify(STATE.officeExpenseCash));
     localStorage.setItem(LS_GL, JSON.stringify(STATE.generalLedger));
-    if (STATE.user && STATE.view === 'dash') {
+    localStorage.setItem(LS_CASE_TYPES, JSON.stringify(STATE.caseTypes || []));
+    if (!skipCloud && STATE.user && STATE.view === 'dash') {
         clearTimeout(ACCOUNTING_SYNC_TIMER);
         ACCOUNTING_SYNC_TIMER = setTimeout(() => {
             rewriteAccountingRowsInDb().catch(err => console.error('Accounting sync failed:', err));
@@ -734,6 +772,9 @@ function parseEntriesJson(value, fallback=[]) {
 function defaultExpenseTypes() {
     return ['Office Supplies', 'Travel', 'Utilities', 'Rent', 'Salaries', 'Marketing', 'Equipment', 'Maintenance', 'Miscellaneous'];
 }
+function defaultCaseTypes() {
+    return ['Salaried Filing', 'Business Filing', 'FBR Notice', 'Registration', 'Tax Consultation', 'Audit', 'Other'];
+}
 function defaultChartOfAccounts() {
     return {
         assets: ['Cash','Accounts Receivable','Allowance for Doubtful Accounts','Interest Receivable','Inventory','Supplies','Prepaid Insurance','Prepaid Rent','Land','Equipment','Accumulated Depreciation—Equipment','Buildings','Accumulated Depreciation—Buildings','Copyrights','Goodwill','Patents'],
@@ -790,6 +831,7 @@ function buildSyncRow(kind, key, payload) {
         status: 'Completed',
         createdBy: STATE.user?.name || 'System',
         arAmount: 0,
+        v: getLocalAccountingVersion(),
         createdAt: nowStamp(),
         completedAt: nowStamp()
     };
@@ -803,6 +845,19 @@ function hydrateAccountingFromAllData(data=STATE.allData) {
     const expensesRow = getSyncRow('accounting', 'expenses', data);
     const officeCashRow = getSyncRow('accounting', 'office_expense_cash', data);
     const glRow = getSyncRow('accounting', 'gl', data);
+    const caseTypesRow = getSyncRow('accounting', 'case_types', data);
+
+    // ── VERSION GUARD ──
+    // Determine the newest version present in the cloud snapshot. Only accept the
+    // remote data if it is at least as new as our local edits. Otherwise a stale
+    // background poll would overwrite changes the user just made locally.
+    const allRows = [coaRow, arRow, apRow, cashRow, expenseTypesRow, expensesRow, officeCashRow, glRow, caseTypesRow];
+    const remoteV = allRows.reduce((max, r) => Math.max(max, syncRowVersion(r)), 0);
+    const localV  = getLocalAccountingVersion();
+    // No accounting sync rows in the cloud at all → nothing to hydrate.
+    if (!allRows.some(Boolean)) return false;
+    // Local edits are newer than the cloud → keep local, don't clobber.
+    if (remoteV < localV) return false;
 
     let changed = false;
 
@@ -851,11 +906,26 @@ function hydrateAccountingFromAllData(data=STATE.allData) {
         STATE.generalLedger = dedupeById(parseEntriesJson(glRow.desc, []));
         changed = true;
     }
+    if (caseTypesRow && caseTypesRow.desc) {
+        const parsedCaseTypes = parseEntriesJson(caseTypesRow.desc, null);
+        if (Array.isArray(parsedCaseTypes) && parsedCaseTypes.length) {
+            STATE.caseTypes = parsedCaseTypes;
+            changed = true;
+        }
+    }
 
+    // Whenever we adopt cloud data, recompute Chart-of-Accounts balances from the
+    // (fully-synced) General Ledger so balances are always consistent even if the
+    // cloud's COA sync row happened to be written before the latest GL entry.
     if (changed) {
-        // Recompute COA balances from the freshly hydrated GL
-        syncCOABalancesFromGL();
-        saveAccounting();
+        SUPPRESS_VERSION_BUMP = true;
+        try {
+            syncCOABalancesFromGL();
+            if (remoteV > localV) setLocalAccountingVersion(remoteV);
+            saveAccounting(true); // localStorage only — don't echo back to the cloud
+        } finally {
+            SUPPRESS_VERSION_BUMP = false;
+        }
     }
     return changed;
 }
@@ -998,6 +1068,7 @@ function resetAccountingLocalState() {
     STATE.expenses = [];
     STATE.officeExpenseCash = [];
     STATE.generalLedger = [];
+    STATE.caseTypes = defaultCaseTypes();
     saveAccounting();
 }
 async function rewriteAccountingRowsInDb() {
@@ -1012,6 +1083,7 @@ async function rewriteAccountingRowsInDb() {
         upsertSyncRow('accounting', 'expenses',            dedupeById(STATE.expenses)),
         upsertSyncRow('accounting', 'office_expense_cash', dedupeById(STATE.officeExpenseCash)),
         upsertSyncRow('accounting', 'gl',                  dedupeById(STATE.generalLedger)),
+        upsertSyncRow('accounting', 'case_types',          STATE.caseTypes || defaultCaseTypes()),
     ]);
     // Keep STATE.allData's sync rows in sync locally so that a subsequent
     // hydrateAccountingFromAllData() reads the freshly-written values without
@@ -1031,6 +1103,7 @@ function _patchSyncRowsIntoAllData() {
         ['expenses',            dedupeById(STATE.expenses)],
         ['office_expense_cash', dedupeById(STATE.officeExpenseCash)],
         ['gl',                  dedupeById(STATE.generalLedger)],
+        ['case_types',          STATE.caseTypes || defaultCaseTypes()],
     ];
     for (const [key, payload] of keys) {
         const row = buildSyncRow('accounting', key, payload);
@@ -1398,6 +1471,101 @@ async function saveReassign(taskId) {
     } catch(e) { showToast('Error reassigning task', 'error'); }
 }
 
+// ── DELETE TASK (from Case Pipeline) ──
+async function deleteTask(taskId) {
+    if (!requireAdmin('delete tasks')) return;
+    const task = STATE.allData.find(t => String(t.id)===String(taskId));
+    if (!task) return;
+    const linkedAR = STATE.accountsReceivable.find(r => String(r.linkedTaskId)===String(taskId));
+    const warn = linkedAR
+        ? `Delete case "${task.title||'—'}"?\n\nThis also removes its linked receivable (${fmt(linkedAR.total)}) and the related ledger entries. This cannot be undone.`
+        : `Delete case "${task.title||'—'}"? This cannot be undone.`;
+    if (!confirm(warn)) return;
+    try {
+        // Clean up the linked receivable + its GL entries so Chart of Accounts,
+        // General Ledger and Trial Balance stay consistent.
+        let accountingTouched = false;
+        if (linkedAR) {
+            const arIdStr = String(linkedAR.id);
+            STATE.generalLedger = STATE.generalLedger.filter(e => {
+                const ref = String(e.reference || '');
+                return !ref.endsWith('-' + arIdStr) && !ref.startsWith('PMT-' + arIdStr + '-');
+            });
+            STATE.accountsReceivable = STATE.accountsReceivable.filter(r => String(r.id)!==arIdStr);
+            syncCOABalancesFromGL();
+            saveAccounting();
+            accountingTouched = true;
+        }
+        // Remove the task row from the cloud and local cache.
+        await deleteRow(taskId);
+        STATE.allData = STATE.allData.filter(t => String(t.id)!==String(taskId));
+        if (accountingTouched) await rewriteAccountingRowsInDb();
+        closeModal();
+        showToast('Case deleted!');
+        await syncData(true);
+        render();
+    } catch(e) {
+        console.error('Delete task error:', e);
+        showToast('Failed to delete case. Check DB connection.', 'error');
+    }
+}
+
+// ── CUSTOM CASE TYPES ──
+function openManageCaseTypes() {
+    if (!requireAdmin('manage case types')) return;
+    const types = (STATE.caseTypes && STATE.caseTypes.length) ? STATE.caseTypes : defaultCaseTypes();
+    const rows = types.map((ct, i) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--navy-800);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+            <span style="font-size:13px;">${escapeAttr(ct)}</span>
+            <button class="btn-sm danger" style="margin-top:0;" onclick="deleteCaseType(${i})">Remove</button>
+        </div>`).join('');
+    document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this){closeModal();render();}">
+        <div class="modal-box" style="max-width:480px;">
+            <button class="modal-close" onclick="closeModal();render()">×</button>
+            <div class="modal-title">⚙ Manage Case Types</div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+                <input id="new_case_type" placeholder="New case type name…" style="margin-top:0;" onkeydown="if(event.key==='Enter')addCaseType()">
+                <button class="btn-primary" style="margin-top:0;width:auto;white-space:nowrap;" onclick="addCaseType()">+ Add</button>
+            </div>
+            <div style="max-height:320px;overflow-y:auto;">
+                ${rows || '<div class="empty"><div class="empty-text">No case types yet.</div></div>'}
+            </div>
+            <div style="margin-top:18px;text-align:right;">
+                <button class="btn-outline" onclick="closeModal();render()">Done</button>
+            </div>
+        </div>
+    </div>`;
+    setTimeout(() => document.getElementById('new_case_type')?.focus(), 100);
+}
+
+async function addCaseType() {
+    if (!requireAdmin('manage case types')) return;
+    const input = document.getElementById('new_case_type');
+    const name = (input?.value || '').trim();
+    if (!name) { showToast('Enter a case type name', 'error'); return; }
+    if (!Array.isArray(STATE.caseTypes)) STATE.caseTypes = defaultCaseTypes();
+    if (STATE.caseTypes.some(t => t.toLowerCase() === name.toLowerCase())) {
+        showToast('That case type already exists', 'error');
+        return;
+    }
+    STATE.caseTypes.push(name);
+    await persistAccountingNow('Case type added!');
+    openManageCaseTypes(); // refresh modal list
+}
+
+async function deleteCaseType(index) {
+    if (!requireAdmin('manage case types')) return;
+    if (!Array.isArray(STATE.caseTypes)) return;
+    if (STATE.caseTypes.length <= 1) { showToast('At least one case type is required', 'error'); return; }
+    const name = STATE.caseTypes[index];
+    if (name == null) return;
+    if (!confirm(`Remove case type "${name}"? Existing cases keep their type.`)) return;
+    STATE.caseTypes.splice(index, 1);
+    await persistAccountingNow('Case type removed!');
+    openManageCaseTypes(); // refresh modal list
+}
+
 // ── VIEW TASK DETAIL ──
 function openViewTask(taskId) {
     const task = STATE.allData.find(t => String(t.id)===String(taskId));
@@ -1545,7 +1713,12 @@ function openPipelineCasesModal(statusKey, title) {
                                 <td>${formatDateTime(t.createdAt)}</td>
                                 <td>${formatDateTime(t.completedAt)}</td>
                                 <td>${t.arAmount ? fmt(t.arAmount) : '—'}</td>
-                                <td><button class="btn-sm" onclick="openViewTask('${t.id}')">👁 View</button></td>
+                                <td>
+                                    <div class="btn-action-group">
+                                        <button class="btn-sm" onclick="openViewTask('${t.id}')">👁 View</button>
+                                        ${isAdminUser() ? `<button class="btn-sm danger" onclick="deleteTask('${t.id}')">🗑 Delete</button>` : ''}
+                                    </div>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -3620,6 +3793,7 @@ function renderTab(users, tasks) {
                             <button class="btn-sm" onclick="openViewTask('${t.id}')">👁 View</button>
                             ${canStatusEditTasks ? `<button class="btn-sm success" onclick="openViewTask('${t.id}')">✏️ Progress</button>` : ''}
                             ${isAdmin ? `<button class="btn-sm warning" onclick="openReassignTask('${t.id}')">🔄 Reassign</button>` : ''}
+                            ${isAdmin ? `<button class="btn-sm danger" onclick="deleteTask('${t.id}')">🗑 Delete</button>` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -3715,15 +3889,9 @@ function renderTab(users, tasks) {
                     <input id="t_title" placeholder="Full name of client">
                 </div>
                 <div>
-                    <label>Case Type</label>
+                    <label>Case Type ${isAdmin ? `<button type="button" class="btn-sm" style="margin-left:6px;padding:2px 8px;font-size:11px;" onclick="openManageCaseTypes()">⚙ Manage</button>` : ''}</label>
                     <select id="t_type">
-                        <option>Salaried Filing</option>
-                        <option>Business Filing</option>
-                        <option>FBR Notice</option>
-                        <option>Registration</option>
-                        <option>Tax Consultation</option>
-                        <option>Audit</option>
-                        <option>Other</option>
+                        ${(STATE.caseTypes && STATE.caseTypes.length ? STATE.caseTypes : defaultCaseTypes()).map(ct => `<option>${escapeAttr(ct)}</option>`).join('')}
                     </select>
                 </div>
                 <div>
@@ -4393,8 +4561,7 @@ async function saveMRClient() {
         saveAccounting();
         await Promise.all([
             _setDoc(_doc(mainDb, AR_MR_COL, arEntry.id), arEntry),
-            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable)),
-            upsertSyncRow('accounting', 'gl', dedupeById(STATE.generalLedger))
+            rewriteAccountingRowsInDb()
         ]);
         showToast('Client added!');
         closeModal();
@@ -4425,10 +4592,7 @@ async function deleteMRClient(clientId) {
         syncCOABalancesFromGL();
         try { await _deleteDoc(_doc(mainDb, AR_MR_COL, 'MR_' + clientId)); } catch(e2) {}
         saveAccounting();
-        await Promise.all([
-            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable)),
-            upsertSyncRow('accounting', 'gl', dedupeById(STATE.generalLedger))
-        ]);
+        await rewriteAccountingRowsInDb();
         showToast('Client deleted!');
         render();
     } catch(e) { console.error(e); showToast('Delete failed', 'error'); }
@@ -4507,12 +4671,10 @@ async function saveMRPayment(clientId) {
             STATE.accountsReceivable.push(newAr);
             try { await _setDoc(_doc(mainDb, AR_MR_COL, newAr.id), newAr); } catch(e2) {}
         }
-        // Always persist GL + AR to localStorage and Firebase
+        // Always persist the full accounting set to localStorage and Firebase so
+        // GL, Chart of Accounts and Trial Balance stay consistent.
         saveAccounting();
-        await Promise.all([
-            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable)),
-            upsertSyncRow('accounting', 'gl', dedupeById(STATE.generalLedger))
-        ]);
+        await rewriteAccountingRowsInDb();
         showToast('Payment recorded!');
         closeModal();
         render();
@@ -4546,12 +4708,10 @@ async function markMRFullyPaid(clientId) {
             STATE.accountsReceivable.push(newAr);
             try { await _setDoc(_doc(mainDb, AR_MR_COL, newAr.id), newAr); } catch(e2) {}
         }
-        // Always persist GL + AR to localStorage and Firebase
+        // Always persist the full accounting set to localStorage and Firebase so
+        // GL, Chart of Accounts and Trial Balance stay consistent.
         saveAccounting();
-        await Promise.all([
-            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable)),
-            upsertSyncRow('accounting', 'gl', dedupeById(STATE.generalLedger))
-        ]);
+        await rewriteAccountingRowsInDb();
         showToast('Marked as fully paid!');
         closeModal();
         render();
