@@ -1481,32 +1481,35 @@ async function deleteTask(taskId) {
         ? `Delete case "${task.title||'—'}"?\n\nThis also removes its linked receivable (${fmt(linkedAR.total)}) and the related ledger entries. This cannot be undone.`
         : `Delete case "${task.title||'—'}"? This cannot be undone.`;
     if (!confirm(warn)) return;
+
+    // Clean up the linked receivable + its GL entries so Chart of Accounts,
+    // General Ledger and Trial Balance stay consistent.
+    let accountingTouched = false;
+    if (linkedAR) {
+        const arIdStr = String(linkedAR.id);
+        STATE.generalLedger = STATE.generalLedger.filter(e => {
+            const ref = String(e.reference || '');
+            return !ref.endsWith('-' + arIdStr) && !ref.startsWith('PMT-' + arIdStr + '-');
+        });
+        STATE.accountsReceivable = STATE.accountsReceivable.filter(r => String(r.id)!==arIdStr);
+        syncCOABalancesFromGL();
+        accountingTouched = true;
+    }
+    // Optimistically remove from the local cache + persist, then re-render so the
+    // user gets instant feedback regardless of network latency.
+    STATE.allData = STATE.allData.filter(t => String(t.id)!==String(taskId));
+    if (accountingTouched) saveAccounting();
+    closeModal();
+    render();
+
     try {
-        // Clean up the linked receivable + its GL entries so Chart of Accounts,
-        // General Ledger and Trial Balance stay consistent.
-        let accountingTouched = false;
-        if (linkedAR) {
-            const arIdStr = String(linkedAR.id);
-            STATE.generalLedger = STATE.generalLedger.filter(e => {
-                const ref = String(e.reference || '');
-                return !ref.endsWith('-' + arIdStr) && !ref.startsWith('PMT-' + arIdStr + '-');
-            });
-            STATE.accountsReceivable = STATE.accountsReceivable.filter(r => String(r.id)!==arIdStr);
-            syncCOABalancesFromGL();
-            saveAccounting();
-            accountingTouched = true;
-        }
-        // Remove the task row from the cloud and local cache.
-        await deleteRow(taskId);
-        STATE.allData = STATE.allData.filter(t => String(t.id)!==String(taskId));
+        // Use the Firestore document id when we have it (falls back to the row id).
+        await deleteRow(task._firestoreId || task.id || taskId);
         if (accountingTouched) await rewriteAccountingRowsInDb();
-        closeModal();
         showToast('Case deleted!');
-        await syncData(true);
-        render();
     } catch(e) {
         console.error('Delete task error:', e);
-        showToast('Failed to delete case. Check DB connection.', 'error');
+        showToast('Removed locally, but cloud delete failed. It may reappear on next sync.', 'error');
     }
 }
 
@@ -2261,20 +2264,12 @@ async function removeAccount(type, id) {
     if (!acc) return;
     if (!confirm(`Delete "${acc.name}"? This cannot be undone.`)) return;
     STATE.chartOfAccounts[type] = STATE.chartOfAccounts[type].filter(a => String(a.id)!==String(id));
-    // Patch allData immediately so that a subsequent syncData hydration reads the post-delete state
-    _patchSyncRowsIntoAllData();
-    try {
-        await ensureFirebaseAuth();
-        // Write the updated COA directly to Firestore so it's authoritative before any re-sync
-        const coaRow = buildSyncRow('accounting', 'coa', STATE.chartOfAccounts);
-        await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, String(coaRow.id)), coaRow);
-        saveAccounting();
-        showToast('Account deleted!');
-    } catch(e) {
-        console.error('COA delete sync failed', e);
-        showToast('Deleted locally, sync failed.', 'error');
-    }
+    // Persist to localStorage FIRST (saveAccounting runs synchronously inside
+    // persistAccountingNow before any network call) so the deletion survives a
+    // refresh even if the cloud write fails. Then sync the full set to the cloud.
+    const synced = await persistAccountingNow('Account deleted!');
     render();
+    if (synced) await syncData(true);
 }
 
 async function toggleCOAActive(type, id) {
@@ -2283,17 +2278,9 @@ async function toggleCOAActive(type, id) {
     const acc = (STATE.chartOfAccounts[type]||[]).find(a => String(a.id)===String(id));
     if (!acc) return;
     acc.active = acc.active === false ? true : false;
-    _patchSyncRowsIntoAllData();
-    try {
-        await ensureFirebaseAuth();
-        const coaRow = buildSyncRow('accounting', 'coa', STATE.chartOfAccounts);
-        await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, String(coaRow.id)), coaRow);
-        saveAccounting();
-        showToast(acc.active ? 'Account activated!' : 'Account deactivated!');
-    } catch(e) {
-        showToast('Updated locally, sync failed.', 'error');
-    }
+    const synced = await persistAccountingNow(acc.active ? 'Account activated!' : 'Account deactivated!');
     render();
+    if (synced) await syncData(true);
 }
 
 function exportCOA() {
