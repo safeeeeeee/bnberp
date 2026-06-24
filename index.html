@@ -4393,7 +4393,8 @@ async function saveMRClient() {
         saveAccounting();
         await Promise.all([
             _setDoc(_doc(mainDb, AR_MR_COL, arEntry.id), arEntry),
-            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable))
+            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable)),
+            upsertSyncRow('accounting', 'gl', dedupeById(STATE.generalLedger))
         ]);
         showToast('Client added!');
         closeModal();
@@ -4414,9 +4415,20 @@ async function deleteMRClient(clientId) {
         STATE.mrClients  = STATE.mrClients.filter(c => c.id !== clientId);
         STATE.mrPayments = STATE.mrPayments.filter(p => p.clientId !== clientId);
         STATE.accountsReceivable = STATE.accountsReceivable.filter(r => r.linkedMRClientId !== clientId && r.id !== 'MR_' + clientId);
+        // Remove all GL entries related to this MR client
+        const mrArId = 'MR_' + clientId;
+        const mrInv  = 'MR-' + clientId;
+        STATE.generalLedger = STATE.generalLedger.filter(e => {
+            const ref = String(e.reference || '');
+            return !ref.startsWith(mrInv + '-' + mrArId) && !ref.startsWith('PMT-' + mrArId + '-');
+        });
+        syncCOABalancesFromGL();
         try { await _deleteDoc(_doc(mainDb, AR_MR_COL, 'MR_' + clientId)); } catch(e2) {}
         saveAccounting();
-        await upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable));
+        await Promise.all([
+            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable)),
+            upsertSyncRow('accounting', 'gl', dedupeById(STATE.generalLedger))
+        ]);
         showToast('Client deleted!');
         render();
     } catch(e) { console.error(e); showToast('Delete failed', 'error'); }
@@ -4478,20 +4490,29 @@ async function saveMRPayment(clientId) {
         await ensureFirebaseAuth();
         await _setDoc(_doc(mainDb, MR_PAYMENTS_COL, id), payment);
         STATE.mrPayments.push({ ...payment, _fsId: id });
-        // GL entry
+        // GL entry: Dr Cash / Cr Accounts Receivable
         glPostARPayment({ id: 'MR_' + clientId, client: client.name, inv: 'MR-' + clientId, received: amount, total: client.amountDue }, 0);
-        // Update AR entry
+        // Update AR entry regardless of whether it exists
+        const allPaid = STATE.mrPayments.filter(p => p.clientId === clientId).reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
+        const newBal = mrComputeBalance(client);
         const arEntry = STATE.accountsReceivable.find(r => r.linkedMRClientId === clientId);
         if (arEntry) {
-            const allPaid = STATE.mrPayments.filter(p => p.clientId === clientId).reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
-            const newBal = mrComputeBalance(client);
             arEntry.received = allPaid;
             arEntry.total    = newBal.totalDue;
             arEntry.status   = allPaid >= newBal.totalDue ? 'Paid' : allPaid > 0 ? 'Partial' : 'Unpaid';
             try { await _setDoc(_doc(mainDb, AR_MR_COL, arEntry.id), arEntry); } catch(e2) {}
-            saveAccounting();
-            await upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable));
+        } else {
+            // AR entry missing — recreate it so GL and COA stay consistent
+            const newAr = { id: 'MR_' + clientId, client: client.name, inv: 'MR-' + clientId, date: client.joinedAt || new Date().toISOString().slice(0,10), due: '', total: newBal.totalDue, received: allPaid, notes: 'Monthly Recovery - ' + client.name, status: allPaid >= newBal.totalDue ? 'Paid' : allPaid > 0 ? 'Partial' : 'Unpaid', linkedMRClientId: clientId };
+            STATE.accountsReceivable.push(newAr);
+            try { await _setDoc(_doc(mainDb, AR_MR_COL, newAr.id), newAr); } catch(e2) {}
         }
+        // Always persist GL + AR to localStorage and Firebase
+        saveAccounting();
+        await Promise.all([
+            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable)),
+            upsertSyncRow('accounting', 'gl', dedupeById(STATE.generalLedger))
+        ]);
         showToast('Payment recorded!');
         closeModal();
         render();
@@ -4512,16 +4533,25 @@ async function markMRFullyPaid(clientId) {
         await _setDoc(_doc(mainDb, MR_PAYMENTS_COL, id), payment);
         STATE.mrPayments.push({ ...payment, _fsId: id });
         glPostARPayment({ id: 'MR_' + clientId, client: client.name, inv: 'MR-' + clientId, received: bal.remaining, total: client.amountDue }, 0);
-        const arEntry = STATE.accountsReceivable.find(r => r.linkedMRClientId === clientId);
-        if (arEntry) {
-            const allPaid = STATE.mrPayments.filter(p => p.clientId === clientId).reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
-            arEntry.received = allPaid;
-            arEntry.total    = bal.totalDue;
-            arEntry.status   = 'Paid';
-            try { await _setDoc(_doc(mainDb, AR_MR_COL, arEntry.id), arEntry); } catch(e2) {}
-            saveAccounting();
-            await upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable));
+        const allPaidFull = STATE.mrPayments.filter(p => p.clientId === clientId).reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
+        const arEntryFull = STATE.accountsReceivable.find(r => r.linkedMRClientId === clientId);
+        if (arEntryFull) {
+            arEntryFull.received = allPaidFull;
+            arEntryFull.total    = bal.totalDue;
+            arEntryFull.status   = 'Paid';
+            try { await _setDoc(_doc(mainDb, AR_MR_COL, arEntryFull.id), arEntryFull); } catch(e2) {}
+        } else {
+            // AR entry missing — recreate it
+            const newAr = { id: 'MR_' + clientId, client: client.name, inv: 'MR-' + clientId, date: client.joinedAt || new Date().toISOString().slice(0,10), due: '', total: bal.totalDue, received: allPaidFull, notes: 'Monthly Recovery - ' + client.name, status: 'Paid', linkedMRClientId: clientId };
+            STATE.accountsReceivable.push(newAr);
+            try { await _setDoc(_doc(mainDb, AR_MR_COL, newAr.id), newAr); } catch(e2) {}
         }
+        // Always persist GL + AR to localStorage and Firebase
+        saveAccounting();
+        await Promise.all([
+            upsertSyncRow('accounting', 'ar', dedupeById(STATE.accountsReceivable)),
+            upsertSyncRow('accounting', 'gl', dedupeById(STATE.generalLedger))
+        ]);
         showToast('Marked as fully paid!');
         closeModal();
         render();
