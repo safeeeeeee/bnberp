@@ -3589,6 +3589,71 @@ function exportBS() {
     showToast('Balance Sheet exported!');
 }
 
+function exportCasePipeline() {
+    const rowsData = sortTasksByMode(taskRows(STATE.allData), STATE.caseSort);
+    if (rowsData.length === 0) { showToast('No cases to export','error'); return; }
+    const today = new Date().toISOString().slice(0,10);
+    const rows = [['Client & Type','Type','Assigned To','Priority','Status','Amount Received','Created']];
+    rowsData.forEach(t => rows.push([
+        t.title || '',
+        t.type || 'Filing',
+        t.name || '',
+        t.prio || 'Medium',
+        t.status || '',
+        t.arAmount || 0,
+        formatDateTime(t.createdAt)
+    ]));
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `case_pipeline_${today}.csv`; a.click();
+    showToast('Case Pipeline exported!');
+}
+
+function exportReceivableSection(sectionKey) {
+    const ar = STATE.accountsReceivable || [];
+    let list, name;
+    if (sectionKey === 'cleared') {
+        list = ar.filter(r => r.status === 'Paid');
+        name = 'cleared_payments';
+    } else if (sectionKey === 'partial') {
+        list = ar.filter(r => r.status === 'Partial');
+        name = 'partial_payments';
+    } else if (sectionKey === 'unpaid') {
+        list = ar.filter(r => r.status === 'Unpaid');
+        name = 'unpaid_invoices';
+    } else if (sectionKey === 'overdue') {
+        list = ar.filter(r => r.due && new Date(r.due) < new Date() && r.status !== 'Paid');
+        name = 'overdue_invoices';
+    } else if (sectionKey === 'linked') {
+        list = ar.filter(r => r.linkedTaskId);
+        name = 'task_linked_receivables';
+    } else { return; }
+    if (list.length === 0) { showToast('Nothing to export in this section','error'); return; }
+    const today = new Date().toISOString().slice(0,10);
+    const isOverdue = sectionKey === 'overdue';
+    const headers = ['Client','Invoice','Date','Due','Total','Received','Balance','Status'];
+    if (isOverdue) headers.push('Days Overdue');
+    const rows = [headers];
+    list.forEach(r => {
+        const row = [
+            r.client || '',
+            r.inv || '',
+            formatDateTime(r.date),
+            r.due ? formatDateTime(r.due) : '',
+            r.total || 0,
+            r.received || 0,
+            (r.total||0)-(r.received||0),
+            r.status || ''
+        ];
+        if (isOverdue) row.push(Math.ceil((new Date()-new Date(r.due))/(1000*60*60*24)));
+        rows.push(row);
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${name}_${today}.csv`; a.click();
+    showToast('Section exported!');
+}
+
 // ── GL HELPERS for running balance in the ledger view ──
 function computeGLRunningBalance(entries, accountType) {
     const normalDebit = ['assets','expenses'].includes(accountType);
@@ -4360,6 +4425,7 @@ function renderTab(users, tasks) {
                         <option value="newest" ${STATE.caseSort==='newest'?'selected':''}>Newest</option>
                         <option value="highest_paid" ${STATE.caseSort==='highest_paid'?'selected':''}>Highest Paid</option>
                     </select>
+                    <button class="btn-sm" onclick="exportCasePipeline()">🖨 Export CSV</button>
                     ${isAdmin ? `<button class="btn-sm success" onclick="STATE.tab='create';render()">➕ New Task</button>` : ''}
                 </div>
             </div>
@@ -5004,6 +5070,7 @@ function renderTab(users, tasks) {
             <div class="card" style="margin-bottom:0;">
                 <div class="card-header" style="margin-bottom:14px;">
                     <div class="card-title" style="color:var(--success);">✅ Cleared Payments (${paid.length})</div>
+                    <button class="btn-sm" onclick="exportReceivableSection('cleared')">🖨 Export CSV</button>
                     ${reportSectionActions('cleared')}
                 </div>
                 ${!STATE.reportSectionOpen.cleared ? '<div style="color:var(--text-muted); font-size:13px;">Section closed</div>' :
@@ -5020,6 +5087,7 @@ function renderTab(users, tasks) {
             <div class="card" style="margin-bottom:0;">
                 <div class="card-header" style="margin-bottom:14px;">
                     <div class="card-title" style="color:var(--warning);">⏳ Partial Payments (${partial.length})</div>
+                    <button class="btn-sm" onclick="exportReceivableSection('partial')">🖨 Export CSV</button>
                     ${reportSectionActions('partial')}
                 </div>
                 ${!STATE.reportSectionOpen.partial ? '<div style="color:var(--text-muted); font-size:13px;">Section closed</div>' :
@@ -5042,6 +5110,7 @@ function renderTab(users, tasks) {
             <div class="card" style="margin-bottom:0;">
                 <div class="card-header" style="margin-bottom:14px;">
                     <div class="card-title" style="color:var(--danger);">❌ Unpaid Invoices (${unpaid.length})</div>
+                    <button class="btn-sm" onclick="exportReceivableSection('unpaid')">🖨 Export CSV</button>
                     ${reportSectionActions('unpaid')}
                 </div>
                 ${!STATE.reportSectionOpen.unpaid ? '<div style="color:var(--text-muted); font-size:13px;">Section closed</div>' :
@@ -5058,6 +5127,7 @@ function renderTab(users, tasks) {
             <div class="card" style="margin-bottom:0;">
                 <div class="card-header" style="margin-bottom:14px;">
                     <div class="card-title" style="color:var(--danger);">⚠️ Overdue (${overdue.length})</div>
+                    <button class="btn-sm" onclick="exportReceivableSection('overdue')">🖨 Export CSV</button>
                     ${reportSectionActions('overdue')}
                 </div>
                 ${!STATE.reportSectionOpen.overdue ? '<div style="color:var(--text-muted); font-size:13px;">Section closed</div>' :
@@ -5079,6 +5149,7 @@ function renderTab(users, tasks) {
         <div class="card" style="margin-bottom:0;">
             <div class="card-header" style="margin-bottom:14px;">
                 <div class="card-title">🔗 Task-Linked Receivables (${taskLinkedAR.length})</div>
+                <button class="btn-sm" onclick="exportReceivableSection('linked')">🖨 Export CSV</button>
                 ${reportSectionActions('linked')}
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
