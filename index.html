@@ -24,35 +24,35 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --navy-950: #000000;
-            --navy-900: #000000;
-            --navy-850: #0a0a0a;
-            --navy-800: #111111;
-            --navy-750: #161616;
-            --navy-700: #1a1a1a;
-            --navy-600: #262626;
-            --navy-500: #404040;
-            --navy-400: #737373;
-            --navy-300: #d4d4d4;
-            --navy-200: #e5e5e5;
-            --navy-100: #f5f5f5;
-            --accent:   #ffffff;
-            --accent-glow: rgba(255,255,255,0.08);
-            --gold:     #f59e0b;
-            --gold-dim: rgba(245,158,11,0.12);
-            --text-primary: #ffffff;
-            --text-secondary: #a3a3a3;
-            --text-muted: #737373;
-            --border: rgba(255,255,255,0.08);
-            --border-bright: rgba(255,255,255,0.16);
-            --success: #10b981;
-            --success-bg: rgba(16,185,129,0.1);
-            --danger: #ef4444;
-            --danger-bg: rgba(239,68,68,0.1);
-            --warning: #f59e0b;
-            --warning-bg: rgba(245,158,11,0.1);
-            --purple: #8b5cf6;
-            --purple-bg: rgba(139,92,246,0.1);
+            --navy-950: #f0ede8;
+            --navy-900: #f0ede8;
+            --navy-850: #f7f5f2;
+            --navy-800: #ede9e3;
+            --navy-750: #e8e4de;
+            --navy-700: #ddd9d3;
+            --navy-600: #c9c5bf;
+            --navy-500: #a09c97;
+            --navy-400: #7a7673;
+            --navy-300: #4a4744;
+            --navy-200: #2e2c2a;
+            --navy-100: #1a1917;
+            --accent:   #2563eb;
+            --accent-glow: rgba(37,99,235,0.12);
+            --gold:     #d97706;
+            --gold-dim: rgba(217,119,6,0.12);
+            --text-primary: #1a1917;
+            --text-secondary: #57534e;
+            --text-muted: #a09c97;
+            --border: rgba(0,0,0,0.08);
+            --border-bright: rgba(0,0,0,0.15);
+            --success: #059669;
+            --success-bg: rgba(5,150,105,0.08);
+            --danger: #dc2626;
+            --danger-bg: rgba(220,38,38,0.08);
+            --warning: #d97706;
+            --warning-bg: rgba(217,119,6,0.08);
+            --purple: #7c3aed;
+            --purple-bg: rgba(124,58,237,0.08);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', 'Segoe UI', sans-serif; background: var(--navy-900); color: var(--text-primary); font-size: 14px; line-height: 1.6; }
@@ -60,7 +60,7 @@
         ::-webkit-scrollbar-track { background: var(--navy-850); }
         ::-webkit-scrollbar-thumb { background: var(--navy-600); border-radius: 3px; }
 
-        #loading { position: fixed; top: 16px; right: 20px; background: var(--navy-700); border: 1px solid var(--border-bright); color: var(--navy-300); padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; letter-spacing: 0.3px; z-index: 9999; display: none; align-items: center; gap: 6px; }
+        #loading { position: fixed; top: 16px; right: 20px; background: #fff; border: 1px solid var(--border-bright); color: var(--text-secondary); padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; letter-spacing: 0.3px; z-index: 9999; display: none; align-items: center; gap: 6px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
         .spinner { width: 10px; height: 10px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -74,15 +74,15 @@
         .profile-upload-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 
         /* MODAL */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-        .modal-box { background: var(--navy-850); border: 1px solid var(--border-bright); border-radius: 14px; padding: 28px 32px; width: 90%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.6); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-box { background: var(--navy-850); border: 1px solid var(--border-bright); border-radius: 14px; padding: 28px 32px; width: 90%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.15); }
         .modal-title { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 18px; }
         .modal-close { float: right; background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; line-height: 1; }
         .modal-close:hover { color: var(--danger); }
 
         /* AUTH */
-        .auth-bg { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--navy-950); background-image: radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.03) 0%, transparent 60%), radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.04) 0%, transparent 50%); }
-        .auth-card { background: var(--navy-850); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 380px; box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 24px 48px rgba(0,0,0,0.8); }
+        .auth-bg { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--navy-950); background-image: radial-gradient(ellipse at 30% 50%, rgba(37,99,235,0.05) 0%, transparent 60%), radial-gradient(ellipse at 70% 20%, rgba(124,58,237,0.04) 0%, transparent 50%); }
+        .auth-card { background: var(--navy-850); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 380px; box-shadow: 0 0 0 1px rgba(0,0,0,0.06), 0 24px 48px rgba(0,0,0,0.12); }
         .auth-logo { text-align: center; margin-bottom: 28px; }
         .auth-logo .brand-icon { width: 52px; height: 52px; background: linear-gradient(135deg, var(--navy-600), var(--navy-700)); border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; border: 1px solid var(--border-bright); }
         .auth-logo h1 { font-size: 20px; font-weight: 600; color: var(--text-primary); }
@@ -92,15 +92,15 @@
 
         /* INPUTS */
         input, select, textarea { width: 100%; padding: 10px 14px; margin-top: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--navy-800); color: var(--text-primary); font-family: inherit; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; outline: none; }
-        input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12), 0 0 8px rgba(37,99,235,0.1); }
         input::placeholder { color: var(--text-muted); }
-        select option { background: var(--navy-800); }
+        select option { background: #f7f5f2; color: #1a1917; }
         textarea { resize: vertical; min-height: 80px; }
         label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-top: 14px; letter-spacing: 0.3px; text-transform: uppercase; }
 
         /* BUTTONS */
-        .btn-primary { background: var(--accent); color: #000; padding: 10px 20px; border-radius: 8px; border: none; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; width: 100%; margin-top: 20px; }
-        .btn-primary:hover { background: #e5e5e5; }
+        .btn-primary { background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 8px; border: none; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; width: 100%; margin-top: 20px; }
+        .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:active { transform: scale(0.98); }
         .btn-sm { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--navy-700); color: var(--text-primary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
         .btn-sm:hover { background: var(--navy-600); border-color: var(--border-bright); }
@@ -113,15 +113,15 @@
         .btn-outline:hover { border-color: var(--border-bright); color: var(--text-primary); }
 
         /* HEADER */
-        .header { height: 60px; background: var(--navy-850); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); }
+        .header { height: 60px; background: rgba(247,245,242,0.92); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
         .header-brand { display: flex; align-items: center; gap: 10px; }
-        .brand-pill { background: var(--navy-700); border: 1px solid var(--border-bright); border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: 700; color: var(--navy-300); letter-spacing: 0.5px; }
+        .brand-pill { background: #2563eb; border: 1px solid rgba(37,99,235,0.3); border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.5px; box-shadow: 0 0 12px rgba(37,99,235,0.3); }
         .header-brand span { font-size: 15px; font-weight: 600; color: var(--text-primary); }
         .sync-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--success); font-weight: 500; }
         .sync-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         .header-user { display: flex; align-items: center; gap: 14px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; }
         .user-name { font-size: 14px; font-weight: 500; }
         .user-role { font-size: 11px; color: var(--text-secondary); }
         .btn-logout { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; font-family: inherit; padding: 6px 10px; border-radius: 6px; transition: all 0.2s; }
@@ -129,7 +129,7 @@
 
         /* SIDEBAR */
         .layout { display: flex; }
-        .sidebar { width: 240px; background: var(--navy-850); border-right: 1px solid var(--border); padding: 20px 14px; min-height: calc(100vh - 60px); flex-shrink: 0; position: relative; }
+        .sidebar { width: 240px; background: #f7f5f2; border-right: 1px solid var(--border); padding: 20px 14px; min-height: calc(100vh - 60px); flex-shrink: 0; position: relative; }
         .sidebar-section { font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; padding: 0 8px; margin: 18px 0 8px; }
         .sidebar-section:first-child { margin-top: 4px; }
         .nav-btn { width: 100%; padding: 9px 12px; border-radius: 8px; border: none; background: none; text-align: left; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 10px; transition: all 0.15s; margin-bottom: 2px; }
@@ -142,14 +142,15 @@
         .main { flex: 1; padding: 28px 32px; overflow-x: hidden; }
 
         /* CARDS */
-        .card { background: var(--navy-850); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card { background: var(--navy-850); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
         .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
         .card-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
         .card-subtitle { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
         /* STATS */
         .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px; }
-        .stat-card { background: var(--navy-800); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+        .stat-card { background: var(--navy-800); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; transition: box-shadow 0.2s, border-color 0.2s; }
+        .stat-card:hover { border-color: rgba(37,99,235,0.25); box-shadow: 0 0 12px rgba(37,99,235,0.08); }
         .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-val { font-size: 26px; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
         .stat-val.accent { color: var(--accent); }
@@ -162,8 +163,8 @@
         table { width: 100%; border-collapse: collapse; }
         thead tr { border-bottom: 1px solid var(--border); }
         th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-        tbody tr { border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s; }
-        tbody tr:hover { background: var(--navy-800); }
+        tbody tr { border-bottom: 1px solid rgba(0,0,0,0.06); transition: background 0.15s; }
+        tbody tr:hover { background: rgba(0,0,0,0.04); }
         tbody tr:last-child { border-bottom: none; }
         td { padding: 14px; font-size: 13px; }
         .td-title { font-weight: 600; color: var(--text-primary); }
@@ -174,10 +175,10 @@
         .badge-high { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
         .badge-medium { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(245,158,11,0.25); }
         .badge-low { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.25); }
-        .badge-role { background: var(--accent-glow); color: var(--text-primary); border: 1px solid var(--border-bright); }
+        .badge-role { background: rgba(37,99,235,0.08); color: #2563eb; border: 1px solid rgba(37,99,235,0.2); }
         .badge-consultant { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(139,92,246,0.3); }
         .badge-pending { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(245,158,11,0.25); }
-        .badge-inprogress { background: var(--accent-glow); color: var(--text-primary); border: 1px solid var(--border-bright); }
+        .badge-inprogress { background: rgba(37,99,235,0.08); color: #2563eb; border: 1px solid rgba(37,99,235,0.2); }
         .badge-completed { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
         .badge-canceled { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
         .badge-paid { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
@@ -194,8 +195,8 @@
         .leader-info { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 12px; }
         .leader-name { font-size: 13px; font-weight: 500; }
         .leader-score { font-size: 14px; font-weight: 700; color: var(--success); min-width: 70px; text-align: right; }
-        .score-bar-wrap { flex: 1; height: 4px; background: var(--navy-700); border-radius: 2px; margin: 0 14px; overflow: hidden; }
-        .score-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.6s ease; }
+        .score-bar-wrap { flex: 1; height: 4px; background: rgba(0,0,0,0.08); border-radius: 2px; margin: 0 14px; overflow: hidden; }
+        .score-bar { height: 100%; background: #2563eb; border-radius: 2px; transition: width 0.6s ease; box-shadow: 0 0 6px rgba(37,99,235,0.4); }
 
         /* FORM GRID */
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
@@ -207,15 +208,15 @@
         .empty-text { font-size: 14px; }
 
         /* AVATAR */
-        .avatar-fallback { width: 36px; height: 36px; border-radius: 50%; background: var(--navy-600); border: 2px solid var(--accent); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--navy-200); }
+        .avatar-fallback { width: 36px; height: 36px; border-radius: 50%; background: #2563eb; border: 2px solid #1d4ed8; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
         .avatar-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border-bright); }
         .avatar-sm-fallback { width: 32px; height: 32px; border-radius: 50%; background: var(--navy-700); border: 1.5px solid var(--border-bright); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--navy-200); flex-shrink: 0; }
 
         /* ACCOUNTING TABS */
         .sub-tabs { display: flex; gap: 6px; margin-bottom: 22px; border-bottom: 1px solid var(--border); padding-bottom: 0; flex-wrap: wrap; }
         .sub-tab { padding: 8px 16px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: -1px; transition: all 0.2s; }
-        .sub-tab:hover { color: var(--text-primary); }
-        .sub-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .sub-tab:hover { color: #2563eb; }
+        .sub-tab.active { color: #2563eb; border-bottom-color: #2563eb; text-shadow: 0 0 10px rgba(37,99,235,0.45); }
 
         /* ACCOUNT TYPE COLORS */
         .acc-assets { color: #d4d4d4; }
@@ -223,13 +224,13 @@
         .acc-equity { color: #a78bfa; }
         .acc-revenues { color: #34d399; }
         .acc-expenses { color: #fbbf24; }
-        .acc-section-header { background: var(--navy-800); border-radius: 6px; padding: 8px 14px; margin: 12px 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+        .acc-section-header { background: rgba(0,0,0,0.05); border-radius: 6px; padding: 8px 14px; margin: 12px 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
 
         /* STATUS SELECT */
-        .status-select { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--navy-800); color: var(--text-primary); font-family: inherit; font-size: 12px; cursor: pointer; margin-top: 0; width: auto; }
+        .status-select { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: var(--text-primary); font-family: inherit; font-size: 12px; cursor: pointer; margin-top: 0; width: auto; }
 
         /* TOAST */
-        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--navy-700); border: 1px solid var(--border-bright); color: var(--text-primary); padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 8px; }
+        .toast { position: fixed; bottom: 24px; right: 24px; background: #1a1917; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
         @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
         .amount-green { color: var(--success); font-weight: 600; }
@@ -237,9 +238,9 @@
         .amount-gold { color: var(--gold); font-weight: 600; }
 
         /* TASK DETAIL PANEL */
-        .task-detail { background: var(--navy-800); border: 1px solid var(--border-bright); border-radius: 10px; padding: 20px; margin-top: 8px; }
+        .task-detail { background: rgba(0,0,0,0.03); border: 1px solid var(--border-bright); border-radius: 10px; padding: 20px; margin-top: 8px; }
         .task-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-        .task-detail-item { background: var(--navy-850); border-radius: 8px; padding: 10px 14px; }
+        .task-detail-item { background: #fff; border-radius: 8px; padding: 10px 14px; border: 1px solid var(--border); }
         .task-detail-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
         .task-detail-val { font-size: 13px; color: var(--text-primary); font-weight: 500; margin-top: 3px; }
 
@@ -248,18 +249,18 @@
 
         /* CLICKABLE ROW */
         .clickable-row { cursor: pointer; }
-        .clickable-row:hover td { background: rgba(255,255,255,0.04); }
+        .clickable-row:hover td { background: rgba(0,0,0,0.03); }
 
         /* REASSIGN BTN */
         .btn-action-group { display: flex; gap: 5px; flex-wrap: wrap; }
 
         /* WORKLOAD WIDGET */
-        .workload-widget { background: var(--navy-800); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+        .workload-widget { background: rgba(0,0,0,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
 
         /* TABS SWITCH */
-        .tab-switch { display: flex; background: var(--navy-800); border-radius: 8px; padding: 3px; gap: 2px; margin-bottom: 20px; }
+        .tab-switch { display: flex; background: rgba(0,0,0,0.05); border-radius: 8px; padding: 3px; gap: 2px; margin-bottom: 20px; border: 1px solid var(--border); }
         .tab-switch-btn { flex: 1; padding: 7px 12px; border: none; background: none; color: var(--text-secondary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
-        .tab-switch-btn.active { background: var(--navy-700); color: var(--text-primary); border: 1px solid var(--border); }
+        .tab-switch-btn.active { background: #2563eb; color: #fff; border: 1px solid rgba(37,99,235,0.3); box-shadow: 0 0 10px rgba(37,99,235,0.25); }
 
         /* ── GLOBAL ANIMATIONS ── */
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -319,7 +320,7 @@
         .coa-table th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; border-bottom: 1px solid var(--border); }
         .coa-table td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
         .coa-table tbody tr { transition: background 0.15s ease; cursor: default; animation: fadeInUp 0.3s cubic-bezier(0.22,1,0.36,1) both; }
-        .coa-table tbody tr:hover { background: var(--navy-800); }
+        .coa-table tbody tr:hover { background: rgba(0,0,0,0.04); }
         .coa-table tbody tr:last-child td { border-bottom: none; }
         .acc-code  { font-family: 'Courier New', monospace; font-size: 12px; color: var(--text-muted); background: var(--navy-800); padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border); white-space: nowrap; }
         .acc-type-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -337,6 +338,52 @@
         .coa-stat-bar { height: 3px; border-radius: 2px; margin-top: 8px; background: var(--navy-700); overflow: hidden; }
         .coa-stat-fill { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.22,1,0.36,1); }
         .inline-edit-input { background: var(--navy-750); border: 1px solid var(--accent); color: var(--text-primary); padding: 4px 8px; border-radius: 5px; font-size: 13px; font-family: inherit; outline: none; width: 100%; animation: scaleIn 0.15s ease; }
+
+        /* ── OFF-WHITE THEME EXTRA OVERRIDES ── */
+
+        /* Pipeline kanban columns */
+        [style*="background: var(--navy-800)"],
+        [style*="background:var(--navy-800)"] { background: #ede9e3 !important; }
+
+        /* Input backgrounds white for contrast */
+        input, select, textarea { background: #ffffff !important; color: #1a1917 !important; border-color: rgba(0,0,0,0.12) !important; }
+        input::placeholder { color: #a09c97 !important; }
+
+        /* Nav active text glow pulse */
+        .nav-btn.active {
+            animation: navGlow 3s ease-in-out infinite;
+        }
+        @keyframes navGlow {
+            0%, 100% { text-shadow: 0 0 8px rgba(37,99,235,0.4); box-shadow: inset 0 0 10px rgba(37,99,235,0.06); }
+            50%       { text-shadow: 0 0 14px rgba(37,99,235,0.65); box-shadow: inset 0 0 16px rgba(37,99,235,0.12); }
+        }
+
+        /* Sidebar section labels */
+        .sidebar-section { color: #a09c97 !important; }
+
+        /* Sync dot stays green */
+        .sync-dot { color: #059669 !important; }
+        .sync-dot::before { background: #059669 !important; }
+
+        /* Leader row hover */
+        .leader-row:hover { background: rgba(0,0,0,0.04) !important; }
+
+        /* Auth brand icon */
+        .auth-logo .brand-icon { background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; border-color: rgba(37,99,235,0.3) !important; }
+
+        /* Auth hint */
+        .auth-hint { background: rgba(0,0,0,0.04) !important; border-color: rgba(0,0,0,0.08) !important; }
+        .auth-hint strong { color: #2563eb !important; }
+
+        /* Btn-sm hover */
+        .btn-sm:hover { background: rgba(37,99,235,0.08) !important; border-color: rgba(37,99,235,0.25) !important; color: #2563eb !important; }
+
+        /* Btn-outline */
+        .btn-outline:hover { border-color: rgba(37,99,235,0.3) !important; color: #2563eb !important; }
+
+        /* Spinner accent */
+        .spinner { border-top-color: #2563eb !important; border-color: rgba(0,0,0,0.1) !important; }
+
     </style>
 </head>
 <body>
@@ -354,6 +401,17 @@ const FIREBASE_ROWS_PATH = 'erp_rows';
 const FALLBACK_USERS = [
     { name: 'saif ali', un: 'saif', pw: 'saif123', role: 'Admin' }
 ];
+
+// Warn if running from file:// protocol — Firebase won't work properly
+if (location.protocol === 'file:') {
+    console.warn('[ERP] WARNING: Running from file:// — Firebase may have issues. Use a local server or host online.');
+    document.addEventListener('DOMContentLoaded', () => {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#f59e0b;color:#000;padding:10px 20px;font-size:13px;font-weight:600;z-index:99999;text-align:center;';
+        banner.innerHTML = '⚠️ Running from local file — Firebase sync may fail. Host on a web server or use VS Code Live Server for best results. <button onclick="this.parentElement.remove()" style="margin-left:12px;background:#000;color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;">OK</button>';
+        document.body.prepend(banner);
+    });
+}
 const GOOGLE_SHEET_ID = '1yTvYYjMTA7hOqz3lcaB7mxqE9sUR4-EGLDfHvlmDchY';
 
 // ── FIREBASE v10 MODULAR SDK (Firestore) — Main App Block ──
@@ -404,6 +462,9 @@ function _initFirebaseFromModules() {
         _onAuthChanged(_mainAuth, (user) => { _currentUser = user; });
     }
     _firebaseInitialized = true;
+    // Start real-time listener once Firebase is initialized
+    // Delay slightly to ensure auth is ready
+    setTimeout(() => startRealtimeSync(), 1500);
 }
 
 // Initialize immediately if modules already loaded (shouldn't happen but safe)
@@ -439,6 +500,7 @@ async function ensureFirebaseAuth() {
 const LS_ACCOUNTS = 'erp_chart_of_accounts';
 const LS_AR       = 'erp_accounts_receivable';
 const LS_AP       = 'erp_accounts_payable';
+const LS_MONTHLY_EXP = 'erp_monthly_expenses';
 const LS_CASH     = 'erp_cash_transactions';
 const LS_EXPENSE_TYPES = 'erp_expense_types';
 const LS_EXPENSES      = 'erp_expenses';
@@ -487,6 +549,7 @@ let STATE = {
     chartOfAccounts: JSON.parse(localStorage.getItem(LS_ACCOUNTS) || 'null'),
     accountsReceivable: JSON.parse(localStorage.getItem(LS_AR) || '[]'),
     accountsPayable: JSON.parse(localStorage.getItem(LS_AP) || '[]'),
+    monthlyExpenses: JSON.parse(localStorage.getItem(LS_MONTHLY_EXP) || '[]'),
     cashTransactions: JSON.parse(localStorage.getItem(LS_CASH) || '[]'),
     expenseTypes: JSON.parse(localStorage.getItem(LS_EXPENSE_TYPES) || 'null'),
     expenses: JSON.parse(localStorage.getItem(LS_EXPENSES) || '[]'),
@@ -582,6 +645,7 @@ function saveAccounting(skipCloud=false) {
     localStorage.setItem(LS_ACCOUNTS, JSON.stringify(STATE.chartOfAccounts));
     localStorage.setItem(LS_AR, JSON.stringify(STATE.accountsReceivable));
     localStorage.setItem(LS_AP, JSON.stringify(STATE.accountsPayable));
+    localStorage.setItem(LS_MONTHLY_EXP, JSON.stringify(STATE.monthlyExpenses));
     localStorage.setItem(LS_CASH, JSON.stringify(STATE.cashTransactions));
     localStorage.setItem(LS_EXPENSE_TYPES, JSON.stringify(STATE.expenseTypes));
     localStorage.setItem(LS_EXPENSES, JSON.stringify(STATE.expenses));
@@ -859,6 +923,7 @@ function hydrateAccountingFromAllData(data=STATE.allData) {
     const coaRow = getSyncRow('accounting', 'coa', data);
     const arRow = getSyncRow('accounting', 'ar', data);
     const apRow = getSyncRow('accounting', 'ap', data);
+    const monthlyExpRow = getSyncRow('accounting', 'monthly_exp', data);
     const cashRow = getSyncRow('accounting', 'cash', data);
     const expenseTypesRow = getSyncRow('accounting', 'expense_types', data);
     const expensesRow = getSyncRow('accounting', 'expenses', data);
@@ -870,7 +935,7 @@ function hydrateAccountingFromAllData(data=STATE.allData) {
     // Determine the newest version present in the cloud snapshot. Only accept the
     // remote data if it is at least as new as our local edits. Otherwise a stale
     // background poll would overwrite changes the user just made locally.
-    const allRows = [coaRow, arRow, apRow, cashRow, expenseTypesRow, expensesRow, officeCashRow, glRow, caseTypesRow];
+    const allRows = [coaRow, arRow, apRow, monthlyExpRow, cashRow, expenseTypesRow, expensesRow, officeCashRow, glRow, caseTypesRow];
     const remoteV = allRows.reduce((max, r) => Math.max(max, syncRowVersion(r)), 0);
     const localV  = getLocalAccountingVersion();
     // No accounting sync rows in the cloud at all → nothing to hydrate.
@@ -918,6 +983,10 @@ function hydrateAccountingFromAllData(data=STATE.allData) {
     if (expensesRow && expensesRow.desc) {
         STATE.expenses = dedupeById(parseEntriesJson(expensesRow.desc, []));
         changed = true;
+    }
+    if (monthlyExpRow && monthlyExpRow.desc) {
+        const parsed = parseEntriesJson(monthlyExpRow.desc, null);
+        if (parsed !== null) { STATE.monthlyExpenses = parsed; changed = true; }
     }
     if (officeCashRow && officeCashRow.desc) {
         STATE.officeExpenseCash = dedupeById(parseEntriesJson(officeCashRow.desc, []));
@@ -1099,6 +1168,7 @@ async function rewriteAccountingRowsInDb() {
         upsertSyncRow('accounting', 'coa',                 STATE.chartOfAccounts),
         upsertSyncRow('accounting', 'ar',                  dedupeById(STATE.accountsReceivable)),
         upsertSyncRow('accounting', 'ap',                  dedupeById(STATE.accountsPayable)),
+        upsertSyncRow('accounting', 'monthly_exp',         STATE.monthlyExpenses),
         upsertSyncRow('accounting', 'cash',                dedupeById(STATE.cashTransactions)),
         upsertSyncRow('accounting', 'expense_types',       STATE.expenseTypes),
         upsertSyncRow('accounting', 'expenses',            dedupeById(STATE.expenses)),
@@ -1119,6 +1189,7 @@ function _patchSyncRowsIntoAllData() {
         ['coa',                 STATE.chartOfAccounts],
         ['ar',                  dedupeById(STATE.accountsReceivable)],
         ['ap',                  dedupeById(STATE.accountsPayable)],
+        ['monthly_exp',         STATE.monthlyExpenses],
         ['cash',                dedupeById(STATE.cashTransactions)],
         ['expense_types',       STATE.expenseTypes],
         ['expenses',            dedupeById(STATE.expenses)],
@@ -1231,9 +1302,9 @@ async function patchRow(id, patch) {
         await ensureFirebaseAuth();
         const targetId = String(id ?? patch?.id ?? '');
         if (!targetId) throw new Error('Missing row id for Firestore update');
-        // RTDB: mainDb.ref(`erp_rows/${targetId}`).update(patch)
-        // Firestore: updateDoc(doc(mainDb, 'erp_rows', targetId), patch)
-        await _updateDoc(_doc(mainDb, FIREBASE_ROWS_PATH, targetId), patch || {});
+        // Use setDoc with merge:true — creates doc if missing, updates if exists
+        // This prevents "No document to update" errors on first-time sync rows
+        await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, targetId), patch || {}, { merge: true });
         return { ok: true, id: targetId };
     }
     return await gasPost({ action: 'update', id: id, data: patch });
@@ -1304,14 +1375,15 @@ async function syncData(silent=false) {
         // so hydration reads post-delete state, not stale cloud copy
         _patchSyncRowsIntoAllData();
         hydrateAccountingFromAllData(STATE.allData);
+        autoResetMonthlyExpenses();
 
         const newTasksHash = taskHash(STATE.allData);
         const tasksChanged = newTasksHash !== LAST_TASKS_HASH;
         LAST_TASKS_HASH = newTasksHash;
         if (!silent) {
             render();
-        } else if (STATE.view === 'dash' && STATE.tab === 'tasks' && tasksChanged && !isTaskFormDirty()) {
-            render();
+        } else if (STATE.view === 'dash' && !isTaskFormDirty()) {
+            if (tasksChanged || STATE.tab === 'tasks') render();
         }
     } catch(e) {
         console.error("Sync Error:", e);
@@ -1320,7 +1392,96 @@ async function syncData(silent=false) {
     }
     if (el) el.style.display='none';
 }
-setInterval(() => syncData(true), 30000);
+// ── FIRESTORE REAL-TIME LISTENER ──────────────────────────────────────────
+// Replaces 30-second polling. All clients receive updates within ~1 second
+// whenever any document in erp_rows changes in Firestore.
+let _realtimeUnsubscribe = null;
+let _lastRealtimeUpdate = 0;
+const REALTIME_DEBOUNCE_MS = 800; // prevent rapid consecutive re-renders
+
+function startRealtimeSync() {
+    if (!mainDb || !_onSnapshot || !_col) return;
+    // Cancel any existing listener first
+    if (_realtimeUnsubscribe) {
+        try { _realtimeUnsubscribe(); } catch(_) {}
+        _realtimeUnsubscribe = null;
+    }
+    try {
+        _realtimeUnsubscribe = _onSnapshot(
+            _col(mainDb, FIREBASE_ROWS_PATH),
+            (snap) => {
+                // Debounce: ignore updates that arrive within 800ms of each other
+                const now = Date.now();
+                if (now - _lastRealtimeUpdate < REALTIME_DEBOUNCE_MS) return;
+                _lastRealtimeUpdate = now;
+
+                // Build new data array from snapshot
+                const newData = [];
+                snap.forEach(docSnap => newData.push({ ...docSnap.data(), _firestoreId: docSnap.id }));
+
+                // Apply same filters as syncData
+                const localTombstones = getDeletedTaskIds();
+                window._pendingDeletes = window._pendingDeletes || new Set();
+                const allDeleted = new Set([...window._pendingDeletes, ...localTombstones]);
+                let filtered = newData;
+                if (allDeleted.size > 0) {
+                    filtered = filtered.filter(r => !allDeleted.has(String(r.id)));
+                }
+                filtered = filtered.filter(r => !r._deleted || isSyncRow(r));
+
+                // Notify if new task assigned
+                if (STATE.user && STATE.view === 'dash') {
+                    const myTasks = taskRows(filtered).filter(t => t.name === STATE.user.name && t.status !== 'Completed');
+                    if (myTasks.length > STATE.lastTaskCount && STATE.lastTaskCount !== 0) {
+                        notifyUser("New Task Assigned", myTasks[myTasks.length - 1].title);
+                    }
+                    STATE.lastTaskCount = myTasks.length;
+                }
+
+                STATE.allData = filtered;
+                _patchSyncRowsIntoAllData();
+                hydrateAccountingFromAllData(STATE.allData);
+                if (typeof autoResetMonthlyExpenses === 'function') autoResetMonthlyExpenses();
+
+                // Only re-render if user is logged in, not typing in a form
+                if (STATE.view === 'dash' && STATE.user && !isTaskFormDirty()) {
+                    const newHash = taskHash(STATE.allData);
+                    if (newHash !== LAST_TASKS_HASH) {
+                        LAST_TASKS_HASH = newHash;
+                        scheduleRender();
+                    } else if (STATE.tab !== 'create') {
+                        // Re-render for accounting/other tab changes
+                        scheduleRender();
+                    }
+                }
+            },
+            (error) => {
+                // Listener error — fall back to periodic polling
+                console.warn('Realtime listener error, falling back to polling:', error);
+                if (_realtimeUnsubscribe) {
+                    try { _realtimeUnsubscribe(); } catch(_) {}
+                    _realtimeUnsubscribe = null;
+                }
+                // Fallback: poll every 5 seconds if realtime fails
+                setTimeout(() => {
+                    if (!_realtimeUnsubscribe) {
+                        setInterval(() => syncData(true), 5000);
+                    }
+                }, 2000);
+            }
+        );
+        console.log('[ERP] Real-time sync started');
+    } catch(e) {
+        console.warn('[ERP] Could not start real-time sync:', e);
+        // Fallback to 5-second polling
+        setInterval(() => syncData(true), 5000);
+    }
+}
+
+// Fallback polling — only runs if real-time listener is not active
+setInterval(() => {
+    if (!_realtimeUnsubscribe && STATE.user) syncData(true);
+}, 10000);
 
 function notifyUser(title, body) {
     if (!('Notification' in window)) return;
@@ -1355,6 +1516,7 @@ async function login() {
             STATE.view = 'dash';
             localStorage.setItem('erp_user', JSON.stringify(user));
             render();
+            if (!_realtimeUnsubscribe) startRealtimeSync();
         } else {
             btn.textContent = 'Invalid username or password';
             btn.style.background = 'var(--danger)';
@@ -1440,15 +1602,21 @@ async function createTask() {
             newArEntry ? rewriteAccountingRowsInDb() : Promise.resolve()
         ]);
 
-        // Clear form immediately so the UI feels responsive
+        // Optimistically push task to local state so it appears IMMEDIATELY
+        // even if Firestore eventual consistency hasn't indexed it yet.
+        if (!STATE.allData.find(r => String(r.id) === String(data.id))) {
+            STATE.allData.push(data);
+        }
+        _patchSyncRowsIntoAllData();
+
+        // Clear form
         titleEl.value = '';
         descEl.value = '';
         arAmountEl.value = '';
         if (addArEl) addArEl.checked = false;
         showToast('Task created successfully!');
+        render();
 
-        // syncData refreshes the task list; _patchSyncRowsIntoAllData() already
-        // updated allData's accounting sync rows so hydration won't overwrite AR.
         await syncData(true);
     } catch (e) {
         console.error('Create task error:', e);
@@ -1824,7 +1992,7 @@ function openTeamMemberProgress(name) {
 
 function openTeamMembersProgress() {
     const users = STATE.allData.filter(d => d.un);
-    const team = users.filter(u => u.role==='Employee' || u.role==='Consultant');
+    const team = users; // show all users regardless of role
     document.getElementById('modal-container').innerHTML = `
     <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
         <div class="modal-box" style="max-width:760px;">
@@ -2473,6 +2641,16 @@ function openAddAR(prefillClient='', prefillAmount=0) {
                     <label>Amount Received (PKR)</label>
                     <input type="number" id="ar_received" placeholder="0.00" oninput="autoCalcARBalance()">
                 </div>
+                <div>
+                    <label>Payment Mode</label>
+                    <select id="ar_payment_mode">
+                        <option value="">— Select Mode —</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Online Transfer">Online Transfer</option>
+                    </select>
+                </div>
                 <div class="form-full">
                     <label>Auto-Calculated Balance</label>
                     <div id="ar_balance_display" style="padding:10px 14px; background:var(--navy-750); border-radius:8px; font-size:14px; font-weight:700; color:var(--gold); margin-top:8px;">PKR 0.00 outstanding</div>
@@ -2509,7 +2687,8 @@ async function saveAR() {
     const notes    = document.getElementById('ar_notes').value.trim();
     if (!client||!total) { showToast('Client name and amount are required','error'); return; }
     const status = received>=total?'Paid':received>0?'Partial':'Unpaid';
-    const newAR = {id:Date.now(), client, inv, date, due, total, received, notes, status};
+    const paymentMode = document.getElementById('ar_payment_mode')?.value || '';
+    const newAR = {id:Date.now(), client, inv, date, due, total, received, notes, status, paymentMode};
     STATE.accountsReceivable.push(newAR);
     // Post double-entry: Dr Accounts Receivable / Cr Service Revenue
     glPostARInvoice(newAR);
@@ -2538,6 +2717,14 @@ function updateARPayment(id) {
             <label>New Total Received (PKR)</label>
             <input type="number" id="ar_pay_amt" value="${ar.received}" placeholder="0.00" oninput="liveARBalance(${ar.total})">
             <div id="ar_pay_balance" style="font-size:12px; color:var(--text-secondary); margin-top:6px;"></div>
+            <label>Payment Mode</label>
+            <select id="ar_pay_mode">
+                <option value="">— Select Mode —</option>
+                <option value="Cash" ${ar.paymentMode==='Cash'?'selected':''}>Cash</option>
+                <option value="Bank Transfer" ${ar.paymentMode==='Bank Transfer'?'selected':''}>Bank Transfer</option>
+                <option value="Cheque" ${ar.paymentMode==='Cheque'?'selected':''}>Cheque</option>
+                <option value="Online Transfer" ${ar.paymentMode==='Online Transfer'?'selected':''}>Online Transfer</option>
+            </select>
             <label>Payment Note</label>
             <input id="ar_pay_note" placeholder="e.g. Bank transfer on 15 Apr">
             <div style="display:flex;gap:10px;margin-top:20px;">
@@ -2561,6 +2748,8 @@ async function saveARPayment(id) {
     const amt = parseFloat(document.getElementById('ar_pay_amt').value)||0;
     const previousReceived = ar.received || 0;
     ar.received = amt;
+    ar.paidDate = new Date().toISOString().slice(0,10);
+    ar.paymentMode = document.getElementById('ar_pay_mode')?.value || ar.paymentMode || '';
     ar.status   = amt>=ar.total?'Paid':amt>0?'Partial':'Unpaid';
     if (document.getElementById('ar_pay_note').value) ar.notes = document.getElementById('ar_pay_note').value;
     // Post double-entry: Dr Cash / Cr Accounts Receivable for the NEW amount received
@@ -3063,15 +3252,34 @@ function glPostARPayment(ar, previousReceived) {
     const newAmount = (ar.received || 0) - (previousReceived || 0);
     if (newAmount <= 0) return;
     const ref = `PMT-${ar.id}-${Date.now()}`;
+    // Determine cash vs bank account based on paymentMode field
+    const isBankPayment = ar.paymentMode && ar.paymentMode.toLowerCase().includes('bank');
     postJournalEntry(
         new Date().toISOString().slice(0,10),
         ref,
-        `Payment received — ${ar.client} (${ar.inv || ar.id})`,
+        `Payment received — ${ar.client} (${ar.inv || ar.id})${ar.paymentMode ? ' via ' + ar.paymentMode : ''}`,
         [
-            { side:'debit',  accountType:'assets', nameFragment:'cash',                fallbackCode:1010, fallbackName:'Cash',                 amount: newAmount },
+            { side:'debit',  accountType:'assets', nameFragment: isBankPayment ? 'bank' : 'cash', fallbackCode: isBankPayment ? 1030 : 1010, fallbackName: isBankPayment ? 'Bank Account' : 'Cash', amount: newAmount },
             { side:'credit', accountType:'assets', nameFragment:'accounts receivable', fallbackCode:1020, fallbackName:'Accounts Receivable',  amount: newAmount },
         ]
     );
+    // Also post to cashTransactions so it appears in Cash & Bank tab
+    const cashTx = {
+        id: Date.now() + Math.random(),
+        date: new Date().toISOString().slice(0,10),
+        type: isBankPayment ? 'Bank Deposit' : 'Cash In',
+        account: isBankPayment ? 'Bank Account' : 'Cash',
+        amount: newAmount,
+        desc: `AR Payment — ${ar.client} (${ar.inv || ar.id})`,
+        ref: ref,
+        cat: 'Client Payment',
+        fromAR: true,
+        arId: String(ar.id)
+    };
+    // Only add if not already there (avoid duplicates)
+    if (!STATE.cashTransactions.find(t => t.ref === ref)) {
+        STATE.cashTransactions.push(cashTx);
+    }
 }
 
 // ── EXPENSE RECORDED: Dr Expense Account / Cr Cash ──
@@ -3115,15 +3323,32 @@ function glPostAPPayment(ap, previousPaid) {
     const newAmount = (ap.paid || 0) - (previousPaid || 0);
     if (newAmount <= 0) return;
     const ref = `APMT-${ap.id}-${Date.now()}`;
+    const isBankPayment = ap.paymentMode && ap.paymentMode.toLowerCase().includes('bank');
     postJournalEntry(
         new Date().toISOString().slice(0,10),
         ref,
-        `Payment made — ${ap.vendor}`,
+        `Payment made — ${ap.vendor}${ap.paymentMode ? ' via ' + ap.paymentMode : ''}`,
         [
             { side:'debit',  accountType:'liabilities', nameFragment:'accounts payable', fallbackCode:2010, fallbackName:'Accounts Payable', amount: newAmount },
-            { side:'credit', accountType:'assets',      nameFragment:'cash',             fallbackCode:1010, fallbackName:'Cash',             amount: newAmount },
+            { side:'credit', accountType:'assets', nameFragment: isBankPayment ? 'bank' : 'cash', fallbackCode: isBankPayment ? 1030 : 1010, fallbackName: isBankPayment ? 'Bank Account' : 'Cash', amount: newAmount },
         ]
     );
+    // Post to cashTransactions so it appears in Cash & Bank tab
+    const cashTx = {
+        id: Date.now() + Math.random(),
+        date: new Date().toISOString().slice(0,10),
+        type: isBankPayment ? 'Bank Withdrawal' : 'Cash Out',
+        account: isBankPayment ? 'Bank Account' : 'Cash',
+        amount: newAmount,
+        desc: `AP Payment — ${ap.vendor}`,
+        ref: ref,
+        cat: 'Vendor Payment',
+        fromAP: true,
+        apId: String(ap.id)
+    };
+    if (!STATE.cashTransactions.find(t => t.ref === ref)) {
+        STATE.cashTransactions.push(cashTx);
+    }
 }
 
 // ── CASH TRANSACTION: route based on type ──
@@ -3212,19 +3437,10 @@ function computeBalanceSheet() {
             ? ((entry.debit||0) - (entry.credit||0))
             : ((entry.credit||0) - (entry.debit||0));
     }
-    // Also include manual COA balances for accounts with no GL entries
-    for (const [type] of Object.entries(COA_META)) {
-        for (const acc of (STATE.chartOfAccounts[type] || [])) {
-            if (acc.active === false) continue;
-            const key = String(acc.code);
-            if (map[key] && map[key].balance === 0 && (acc.balance || 0) !== 0) {
-                map[key].balance = parseFloat(acc.balance) || 0;
-            }
-        }
-    }
-    const assets      = Object.values(map).filter(a => a.type === 'assets');
-    const liabilities = Object.values(map).filter(a => a.type === 'liabilities');
-    const equity      = Object.values(map).filter(a => a.type === 'equity');
+    // Only show accounts with non-zero balances — zero-balance accounts don't belong on the BS
+    const assets      = Object.values(map).filter(a => a.type === 'assets'      && Math.abs(a.balance || 0) > 0.001);
+    const liabilities = Object.values(map).filter(a => a.type === 'liabilities' && Math.abs(a.balance || 0) > 0.001);
+    const equity      = Object.values(map).filter(a => a.type === 'equity'      && Math.abs(a.balance || 0) > 0.001);
     // Net Income = Revenues - Expenses (auto-computed from GL)
     const totalRevenue = Object.values(map).filter(a => a.type === 'revenues').reduce((s,a) => s + (a.balance||0), 0);
     const totalExpense = Object.values(map).filter(a => a.type === 'expenses').reduce((s,a) => s + (a.balance||0), 0);
@@ -3303,6 +3519,15 @@ function renderBS(isAdmin) {
                 <div><div style="font-weight:700; color:var(--warning);">Balance Sheet is Out of Balance</div>
                 <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Difference: ${fmt(Math.abs(bs.totalAssets - (bs.totalLiabilities + bs.totalEquity)))}. Check GL entries or add missing accounts.</div></div>
                </div>`}
+
+        <!-- Accounting flow note -->
+        <div style="background:rgba(37,99,235,0.06); border:1px solid rgba(37,99,235,0.15); border-radius:10px; padding:12px 18px; margin-bottom:20px; font-size:12px; color:var(--text-secondary); line-height:1.7;">
+            <strong style="color:var(--text-primary);">📌 How this Balance Sheet works:</strong><br>
+            When a task is created with receivable → <strong>Accounts Receivable ↑</strong> and <strong>Service Revenue ↑</strong><br>
+            When AR is marked paid → <strong>Cash ↑</strong> and <strong>Accounts Receivable ↓</strong><br>
+            When an expense is recorded → <strong>Expense ↑</strong> and <strong>Cash ↓</strong><br>
+            All values are computed automatically from the General Ledger.
+        </div>
 
         <!-- Summary Stats -->
         <div class="stats-row" style="margin-bottom:24px;">
@@ -3618,26 +3843,32 @@ function renderTB(isAdmin) {
                 </tr>
             </thead>
             <tbody>
-                ${filtered.map(r => {
-                    const typeColor = coaTypeColor[r.type] || '#d4d4d4';
-                    const meta = COA_META[r.type] || {};
-                    return `<tr>
-                        <td style="font-family:monospace; font-size:12px; color:var(--text-muted);">${r.code||'—'}</td>
-                        <td>
-                            <div style="font-weight:600; font-size:13px;">${r.name||'—'}</div>
-                        </td>
-                        <td>
-                            <span class="coa-section-badge ${meta.dotCls||''}" style="font-size:11px;">${meta.icon||''} ${meta.shortLabel||r.type}</span>
-                        </td>
-                        <td style="text-align:right; font-weight:${r.debitBalance>0?'700':'400'}; color:${r.debitBalance>0?'var(--success)':'var(--text-muted)'}; font-size:13px;">
-                            ${r.debitBalance>0?(r.debitBalance).toLocaleString('en-PK',{minimumFractionDigits:2}):'—'}
-                        </td>
-                        <td style="text-align:right; font-weight:${r.creditBalance>0?'700':'400'}; color:${r.creditBalance>0?'var(--purple)':'var(--text-muted)'}; font-size:13px;">
-                            ${r.creditBalance>0?(r.creditBalance).toLocaleString('en-PK',{minimumFractionDigits:2}):'—'}
-                        </td>
-                        <td><button class="btn-sm" title="View in General Ledger" onclick="drillToGL('${r.code}')">📖 View</button></td>
-                    </tr>`;
-                }).join('')}
+                ${(() => {
+                    const order = ['assets','liabilities','equity','revenues','expenses'];
+                    const labels = { assets:'Assets', liabilities:'Liabilities', equity:'Equity', revenues:'Revenue', expenses:'Expenses' };
+                    const typeColor = { assets:'#d4d4d4', liabilities:'#f87171', equity:'#a78bfa', revenues:'#34d399', expenses:'#fbbf24' };
+                    let html = '';
+                    for (const type of order) {
+                        const group = filtered.filter(r => r.type === type);
+                        if (!group.length) continue;
+                        const groupDr = group.reduce((s,r)=>s+(r.debitBalance||0),0);
+                        const groupCr = group.reduce((s,r)=>s+(r.creditBalance||0),0);
+                        html += `<tr style="background:rgba(255,255,255,0.03);"><td colspan="6" style="padding:8px 14px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:${typeColor[type]};">${labels[type]}</td></tr>`;
+                        group.forEach(r => {
+                            const meta = COA_META[r.type] || {};
+                            html += `<tr>
+                                <td style="font-family:monospace; font-size:12px; color:var(--text-muted); padding-left:24px;">${r.code||'—'}</td>
+                                <td><div style="font-weight:600; font-size:13px;">${r.name||'—'}</div></td>
+                                <td><span class="coa-section-badge ${meta.dotCls||''}" style="font-size:11px;">${meta.icon||''} ${meta.shortLabel||r.type}</span></td>
+                                <td style="text-align:right; font-weight:${r.debitBalance>0?'700':'400'}; color:${r.debitBalance>0?'var(--success)':'var(--text-muted)'}; font-size:13px;">${r.debitBalance>0?fmt(r.debitBalance):'—'}</td>
+                                <td style="text-align:right; font-weight:${r.creditBalance>0?'700':'400'}; color:${r.creditBalance>0?'var(--danger)':'var(--text-muted)'}; font-size:13px;">${r.creditBalance>0?fmt(r.creditBalance):'—'}</td>
+                                <td><button class="btn-sm" style="padding:2px 8px; font-size:11px;" onclick="STATE.tab='gl';STATE.glAccountFilter='${r.code}';render()">View</button></td>
+                            </tr>`;
+                        });
+                        html += `<tr style="background:rgba(255,255,255,0.02); border-top:1px solid var(--border-bright);"><td colspan="3" style="padding:6px 14px; font-size:12px; font-weight:700; color:${typeColor[type]}; padding-left:24px;">Subtotal — ${labels[type]}</td><td style="text-align:right; font-weight:700; font-size:12px; color:${typeColor[type]};">${groupDr>0?fmt(groupDr):'—'}</td><td style="text-align:right; font-weight:700; font-size:12px; color:${typeColor[type]};">${groupCr>0?fmt(groupCr):'—'}</td><td></td></tr>`;
+                    }
+                    return html;
+                })()}
             </tbody>
             <tfoot>
                 <tr style="background:var(--navy-750); border-top:2px solid var(--border-bright);">
@@ -3796,6 +4027,11 @@ function drillToGL(accountCode) {
     STATE.glDateTo = '';
     render();
 }
+let _renderTimer = null;
+function scheduleRender() {
+    if (_renderTimer) clearTimeout(_renderTimer);
+    _renderTimer = setTimeout(() => { _renderTimer = null; render(); }, 60);
+}
 function render() {
     captureFocusState();
     const app = document.getElementById('app');
@@ -3831,6 +4067,10 @@ function render() {
     } else {
         const users = STATE.allData.filter(d => d.un);
         const tasks = taskRows(STATE.allData);
+        // If allData is empty but we're logged in, trigger a background sync
+        if (users.length === 0 && STATE.allData.filter(r => !isSyncRow(r)).length === 0) {
+            syncData(true);
+        }
         const currentUserData = users.find(u=>u.un===STATE.user.un)||STATE.user;
         const myPending = tasks.filter(t=>t.name===STATE.user.name&&t.status!=='Completed'&&t.status!=='Canceled').length;
         const isAdmin = isAdminUser();
@@ -3940,6 +4180,129 @@ function sortTasksByMode(taskList, mode) {
         if (bDate !== aDate) return bDate - aDate;
         return (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0);
     });
+}
+
+// ── MONTHLY RECURRING EXPENSES (Accounts Payable) ──
+function openAddMonthlyExpense(editId) {
+    if (!requireAdmin('manage monthly expenses')) return;
+    const existing = editId ? STATE.monthlyExpenses.find(e => String(e.id) === String(editId)) : null;
+    document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal-box" style="max-width:480px;">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-title">${existing ? '✏️ Edit' : '➕ Add'} Monthly Expense</div>
+            <div class="form-grid">
+                <div class="form-full">
+                    <label>Expense Name</label>
+                    <input id="me_name" placeholder="e.g. Office Rent, Internet Bill, Salary" value="${existing ? escapeAttr(existing.name) : ''}">
+                </div>
+                <div>
+                    <label>Expense Type / Category</label>
+                    <select id="me_type">
+                        ${(STATE.expenseTypes || []).map(t => `<option value="${escapeAttr(t)}" ${existing && existing.type===t?'selected':''}>${t}</option>`).join('')}
+                        <option value="Rent" ${existing && existing.type==='Rent'?'selected':''}>Rent</option>
+                        <option value="Utilities" ${existing && existing.type==='Utilities'?'selected':''}>Utilities</option>
+                        <option value="Salary" ${existing && existing.type==='Salary'?'selected':''}>Salary</option>
+                        <option value="Internet" ${existing && existing.type==='Internet'?'selected':''}>Internet</option>
+                        <option value="Other" ${existing && existing.type==='Other'?'selected':''}>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Monthly Amount (PKR)</label>
+                    <input type="number" id="me_amount" placeholder="0.00" value="${existing ? existing.amount : ''}">
+                </div>
+                <div>
+                    <label>Reset Day of Month (1–28)</label>
+                    <input type="number" id="me_reset_day" min="1" max="28" placeholder="e.g. 1 for 1st of month" value="${existing ? existing.resetDay : '1'}">
+                </div>
+                <div>
+                    <label>Vendor / Payee</label>
+                    <input id="me_vendor" placeholder="e.g. Landlord, KESC, Nayatel" value="${existing ? escapeAttr(existing.vendor||'') : ''}">
+                </div>
+                <div>
+                    <label>Notes</label>
+                    <input id="me_notes" placeholder="Optional notes" value="${existing ? escapeAttr(existing.notes||'') : ''}">
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn-primary" style="margin-top:0;" onclick="saveMonthlyExpense('${editId||''}')">Save</button>
+                <button class="btn-outline" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function saveMonthlyExpense(editId) {
+    if (!requireAdmin('manage monthly expenses')) return;
+    const name = document.getElementById('me_name').value.trim();
+    const type = document.getElementById('me_type').value;
+    const amount = parseFloat(document.getElementById('me_amount').value) || 0;
+    const resetDay = parseInt(document.getElementById('me_reset_day').value) || 1;
+    const vendor = document.getElementById('me_vendor').value.trim();
+    const notes = document.getElementById('me_notes').value.trim();
+    if (!name || !amount) { showToast('Name and amount are required', 'error'); return; }
+    if (editId) {
+        const idx = STATE.monthlyExpenses.findIndex(e => String(e.id) === String(editId));
+        if (idx !== -1) STATE.monthlyExpenses[idx] = { ...STATE.monthlyExpenses[idx], name, type, amount, resetDay, vendor, notes };
+    } else {
+        STATE.monthlyExpenses.push({ id: Date.now(), name, type, amount, resetDay, vendor, notes, createdAt: nowStamp(), paid: false, lastPaidDate: null });
+    }
+    await persistAccountingNow('Monthly expense saved!');
+    closeModal();
+    render();
+}
+
+function markMonthlyExpensePaid(id) {
+    if (!requireAdmin('mark monthly expense paid')) return;
+    const exp = STATE.monthlyExpenses.find(e => String(e.id) === String(id));
+    if (!exp) return;
+    const today = new Date().toISOString().slice(0,10);
+    exp.lastPaidDate = today;
+    exp.paid = true;
+    // Post GL entry: Dr Expense / Cr Cash
+    const glRef = 'MEXP-' + id + '-' + Date.now();
+    postJournalEntry(today, glRef, `Monthly Expense — ${exp.name} (${exp.vendor || ''})`, [
+        { side:'debit',  accountType:'expenses', nameFragment: exp.type || 'expense', fallbackCode: 5990, fallbackName: exp.name, amount: exp.amount },
+        { side:'credit', accountType:'assets',   nameFragment:'cash', fallbackCode: 1010, fallbackName: 'Cash', amount: exp.amount },
+    ]);
+    // Also add to cashTransactions
+    STATE.cashTransactions.push({
+        id: Date.now() + Math.random(),
+        date: today,
+        type: 'Cash Out',
+        account: 'Cash',
+        amount: exp.amount,
+        desc: `Monthly Expense — ${exp.name}`,
+        ref: glRef,
+        cat: exp.type || 'Expense',
+        fromMonthlyExp: true
+    });
+    persistAccountingNow('Expense marked paid!').then(() => { render(); });
+}
+
+function deleteMonthlyExpense(id) {
+    if (!requireAdmin('delete monthly expenses')) return;
+    if (!confirm('Delete this monthly expense?')) return;
+    STATE.monthlyExpenses = STATE.monthlyExpenses.filter(e => String(e.id) !== String(id));
+    persistAccountingNow('Monthly expense deleted!').then(() => render());
+}
+
+function autoResetMonthlyExpenses() {
+    if (!STATE.monthlyExpenses || !STATE.monthlyExpenses.length) return;
+    const today = new Date();
+    let changed = false;
+    for (const exp of STATE.monthlyExpenses) {
+        if (!exp.paid || !exp.lastPaidDate) continue;
+        const lastPaid = new Date(exp.lastPaidDate);
+        const resetDay = exp.resetDay || 1;
+        // If today's date has passed the resetDay and we're in a new month relative to lastPaid
+        const resetThisMonth = new Date(today.getFullYear(), today.getMonth(), resetDay);
+        if (today >= resetThisMonth && lastPaid < resetThisMonth) {
+            exp.paid = false;
+            changed = true;
+        }
+    }
+    if (changed) persistAccountingNow();
 }
 
 function renderTab(users, tasks) {
@@ -4320,7 +4683,7 @@ function renderTab(users, tasks) {
                     <td class="amount-gold">${fmt(r.total)}</td>
                     <td class="amount-green">${fmt(r.received)}</td>
                     <td class="${r.total-r.received>0?'amount-red':'amount-green'}">${fmt(r.total-r.received)}</td>
-                    <td><span class="badge badge-${r.status.toLowerCase()}">${r.status}</span></td>
+                    <td><span class="badge badge-${r.status.toLowerCase()}">${r.status}</span>${r.paymentMode ? `<span class="badge badge-role" style="font-size:10px; margin-left:4px;">${r.paymentMode}</span>` : ''}</td>
                     <td style="white-space:nowrap;">
                         <div class="btn-action-group">
                             ${isAdminUser() ? `<button class="btn-sm success" onclick="updateARPayment('${r.id}')">💰 Pay</button>` : ''}
@@ -4387,6 +4750,41 @@ function renderTab(users, tasks) {
                         </div>
                     </td>
                 </tr>`).join('')}
+                </tbody></table>`}
+        </div>
+        <!-- MONTHLY EXPENSES SECTION -->
+        <div class="card" style="margin-top:20px;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">📅 Monthly Recurring Expenses</div>
+                    <div class="card-subtitle">Auto-resets on the configured day each month</div>
+                </div>
+                ${isAdmin ? `<button class="btn-sm" onclick="openAddMonthlyExpense()">+ Add Monthly Expense</button>` : ''}
+            </div>
+            ${STATE.monthlyExpenses.length === 0
+                ? `<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">No monthly expenses configured yet.</div></div>`
+                : `<table><thead><tr>
+                    <th>Name</th><th>Type</th><th>Vendor</th><th>Amount/Month</th><th>Reset Day</th><th>Status</th><th>Last Paid</th><th>Action</th>
+                </tr></thead>
+                <tbody>${STATE.monthlyExpenses.map(exp => {
+                    const today = new Date();
+                    const resetThisMonth = new Date(today.getFullYear(), today.getMonth(), exp.resetDay || 1);
+                    const isDue = !exp.paid && today >= resetThisMonth;
+                    return `<tr>
+                        <td><div class="td-title">${exp.name}</div><div class="td-sub">${exp.notes || ''}</div></td>
+                        <td><span class="badge badge-partial">${exp.type || '—'}</span></td>
+                        <td>${exp.vendor || '—'}</td>
+                        <td class="amount-red">${fmt(exp.amount)}</td>
+                        <td style="font-size:12px; color:var(--text-secondary);">${exp.resetDay || 1}${[1,21,31].includes(exp.resetDay)?'st':[2,22].includes(exp.resetDay)?'nd':[3,23].includes(exp.resetDay)?'rd':'th'} of month</td>
+                        <td>${exp.paid ? `<span class="badge badge-paid">✓ Paid</span>` : isDue ? `<span class="badge badge-unpaid">⚠ Due</span>` : `<span class="badge badge-partial">Pending</span>`}</td>
+                        <td style="font-size:12px; color:var(--text-secondary);">${exp.lastPaidDate ? formatDateTime(exp.lastPaidDate) : '—'}</td>
+                        <td style="white-space:nowrap;">
+                            ${isAdmin && !exp.paid ? `<button class="btn-sm success" onclick="markMonthlyExpensePaid('${exp.id}')">✓ Mark Paid</button>` : ''}
+                            ${isAdmin ? `<button class="btn-sm" onclick="openAddMonthlyExpense('${exp.id}')">✏️</button>` : ''}
+                            ${isAdmin ? `<button class="btn-sm danger" onclick="deleteMonthlyExpense('${exp.id}')">🗑</button>` : ''}
+                        </td>
+                    </tr>`;
+                }).join('')}
                 </tbody></table>`}
         </div>`;
     }
@@ -4510,13 +4908,38 @@ function renderTab(users, tasks) {
 
     // ── CASH & BANK ──
     if (STATE.tab==='cash') {
-        const cashIn  = STATE.cashTransactions.filter(t=>t.type==='Cash In'||t.type==='Bank Deposit').reduce((s,t)=>s+t.amount,0);
-        const cashOut = STATE.cashTransactions.filter(t=>t.type==='Cash Out'||t.type==='Bank Withdrawal').reduce((s,t)=>s+t.amount,0);
+        // Build combined ledger: manual transactions + AR payments + AP payments
+        // AR payments (received > 0) auto-appear as Cash In / Bank Deposit entries
+        const arPaymentTxs = STATE.accountsReceivable
+            .filter(ar => (ar.received || 0) > 0)
+            .map(ar => ({
+                id: 'AR_PMT_' + ar.id,
+                date: ar.paidDate || ar.date || '',
+                type: (ar.paymentMode && ar.paymentMode.toLowerCase().includes('bank')) ? 'Bank Deposit' : 'Cash In',
+                account: (ar.paymentMode && ar.paymentMode.toLowerCase().includes('bank')) ? 'Bank Account' : 'Cash',
+                amount: ar.received,
+                desc: `AR Receipt — ${ar.client} (${ar.inv || 'Invoice'})`,
+                ref: ar.inv || '',
+                cat: 'Client Payment',
+                fromAR: true,
+                paymentMode: ar.paymentMode || 'Cash',
+                readOnly: true
+            }));
+        // Merge: manual + AR-auto, dedup by ref
+        const allCashTxs = [
+            ...STATE.cashTransactions.filter(t => !t.fromAR),
+            ...arPaymentTxs
+        ];
+        // Remove AR-payment duplicates that were manually also in cashTransactions
+        const seenArIds = new Set(arPaymentTxs.map(t => t.id));
+        const mergedTxs = allCashTxs.filter(t => !STATE.cashTransactions.find(m => m.fromAR && m.arId && t.id === 'AR_PMT_' + m.arId));
+        const cashIn  = allCashTxs.filter(t=>t.type==='Cash In'||t.type==='Bank Deposit').reduce((s,t)=>s+t.amount,0);
+        const cashOut = allCashTxs.filter(t=>t.type==='Cash Out'||t.type==='Bank Withdrawal').reduce((s,t)=>s+t.amount,0);
         const net     = cashIn - cashOut;
-        const deposits= STATE.cashTransactions.filter(t=>t.type==='Bank Deposit').reduce((s,t)=>s+t.amount,0);
-        const withdrawals=STATE.cashTransactions.filter(t=>t.type==='Bank Withdrawal').reduce((s,t)=>s+t.amount,0);
+        const deposits= allCashTxs.filter(t=>t.type==='Bank Deposit').reduce((s,t)=>s+t.amount,0);
+        const withdrawals=allCashTxs.filter(t=>t.type==='Bank Withdrawal').reduce((s,t)=>s+t.amount,0);
         const cashFiltered = sortByNewest(
-            STATE.cashTransactions.filter(t => matchesSearch(t, STATE.cashSearch, ['date', 'type', 'account', 'desc', 'cat', 'ref']))
+            allCashTxs.filter(t => matchesSearch(t, STATE.cashSearch, ['date', 'type', 'account', 'desc', 'cat', 'ref']))
         );
 
         return `
@@ -4526,7 +4949,7 @@ function renderTab(users, tasks) {
             <div class="stat-card"><div class="stat-label">Net Position</div><div class="stat-val ${net>=0?'green':'red'}" style="font-size:18px;">${fmt(net)}</div></div>
             <div class="stat-card"><div class="stat-label">Bank Deposits</div><div class="stat-val green">${fmt(deposits)}</div></div>
             <div class="stat-card"><div class="stat-label">Bank Withdrawals</div><div class="stat-val red">${fmt(withdrawals)}</div></div>
-            <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-val accent">${STATE.cashTransactions.length}</div></div>
+            <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-val accent">${allCashTxs.length}</div></div>
         </div>
         <div class="card">
             <div class="card-header">
@@ -4540,7 +4963,7 @@ function renderTab(users, tasks) {
                 <input id="search_cash" value="${escapeAttr(STATE.cashSearch)}" oninput="setSearchValue('cashSearch', this.value)" placeholder="Search cash and bank" style="max-width:280px; margin-top:0;">
             </div>
             ${cashFiltered.length===0
-                ? `<div class="empty"><div class="empty-icon">🏦</div><div class="empty-text">${STATE.cashTransactions.length===0 ? 'No transactions recorded yet.' : 'No transactions match the current search.'}</div></div>`
+                ? `<div class="empty"><div class="empty-icon">🏦</div><div class="empty-text">${allCashTxs.length===0 ? 'No transactions recorded yet.' : 'No transactions match the current search.'}</div></div>`
                 : `<table><thead><tr>
                     <th>Date</th><th>Type</th><th>Account</th><th>Description</th><th>Category</th><th>Reference</th><th>Amount</th><th></th>
                 </tr></thead>
@@ -4554,7 +4977,7 @@ function renderTab(users, tasks) {
                         <td style="font-size:12px; color:var(--text-secondary);">${t.cat}</td>
                         <td style="font-size:12px; color:var(--text-muted);">${t.ref||'—'}</td>
                         <td class="${isIn?'amount-green':'amount-red'}">${isIn?'+':'-'}${fmt(t.amount)}</td>
-                        <td>${isAdminUser() ? `<button class="btn-sm danger" onclick="deleteCash('${t.id}')">🗑</button>` : ''}</td>
+                        <td>${isAdminUser() && !t.readOnly ? `<button class="btn-sm danger" onclick="deleteCash('${t.id}')">🗑</button>` : ''}</td>
                     </tr>`;
                 }).join('')}
                 </tbody></table>`}
