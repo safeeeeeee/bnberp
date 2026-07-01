@@ -395,8 +395,6 @@
 <div id="modal-container"></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzLm8MaDrVB-Sb4G4hGcj_yM7XUWsrG5_Aipn4lnQ7S4eBHFOxfB-QrG7_Nj6Fy4f9d/exec";
-const REQUEST_TIMEOUT_MS = 12000;
 const FIREBASE_ROWS_PATH = 'erp_rows';
 const FALLBACK_USERS = [
     { name: 'saif ali', un: 'saif', pw: 'saif123', role: 'Admin' }
@@ -940,67 +938,75 @@ function hydrateAccountingFromAllData(data=STATE.allData) {
     const localV  = getLocalAccountingVersion();
     // No accounting sync rows in the cloud at all → nothing to hydrate.
     if (!allRows.some(Boolean)) return false;
-    // Local edits are at least as new as the cloud → keep local, don't clobber.
-    // Using <= (not <) ensures a sync row written at the exact same version/ms as a
-    // local edit can't revert state the user just changed (e.g. a delete).
-    if (remoteV <= localV) return false;
+    // A strictly OLDER remote snapshot can never override newer local state — this
+    // protects a local edit whose cloud write hasn't been acked yet. Bail early.
+    if (remoteV < localV) return false;
+
+    // remoteV >= localV. If the cloud is strictly NEWER, adopt every slice (normal
+    // cross-device update). If versions are EQUAL we must still heal genuine divergence
+    // (each device keeps its own Date.now()-based version in localStorage that survives
+    // reloads, so an equal version can still carry different data). In that case adopt
+    // only the slices whose CONTENT actually differs from what we currently hold — this
+    // keeps the anti-self-clobber protection for our own identical write-echo while
+    // still converging after a reload or an edit made on another device.
+    const remoteIsNewer = remoteV > localV;
+    const _canon = (v) => { try { return JSON.stringify(v); } catch { return null; } };
+    const _wantSlice = (next, current) => remoteIsNewer || _canon(next) !== _canon(current);
 
     let changed = false;
 
     if (coaRow && coaRow.desc) {
         const parsedCoa = parseEntriesJson(coaRow.desc, null);
         if (parsedCoa && typeof parsedCoa === 'object') {
-            STATE.chartOfAccounts = {
+            const nextCoa = {
                 assets: Array.isArray(parsedCoa.assets) ? parsedCoa.assets : [],
                 liabilities: Array.isArray(parsedCoa.liabilities) ? parsedCoa.liabilities : [],
                 equity: Array.isArray(parsedCoa.equity) ? parsedCoa.equity : [],
                 revenues: Array.isArray(parsedCoa.revenues) ? parsedCoa.revenues : [],
                 expenses: Array.isArray(parsedCoa.expenses) ? parsedCoa.expenses : []
             };
-            changed = true;
+            if (_wantSlice(nextCoa, STATE.chartOfAccounts)) { STATE.chartOfAccounts = nextCoa; changed = true; }
         }
     }
 
     if (arRow && arRow.desc) {
-        STATE.accountsReceivable = dedupeById(parseEntriesJson(arRow.desc, []));
-        changed = true;
+        const next = dedupeById(parseEntriesJson(arRow.desc, []));
+        if (_wantSlice(next, STATE.accountsReceivable)) { STATE.accountsReceivable = next; changed = true; }
     }
     if (apRow && apRow.desc) {
-        STATE.accountsPayable = dedupeById(parseEntriesJson(apRow.desc, []));
-        changed = true;
+        const next = dedupeById(parseEntriesJson(apRow.desc, []));
+        if (_wantSlice(next, STATE.accountsPayable)) { STATE.accountsPayable = next; changed = true; }
     }
     if (cashRow && cashRow.desc) {
-        STATE.cashTransactions = dedupeById(parseEntriesJson(cashRow.desc, []));
-        changed = true;
+        const next = dedupeById(parseEntriesJson(cashRow.desc, []));
+        if (_wantSlice(next, STATE.cashTransactions)) { STATE.cashTransactions = next; changed = true; }
     }
     if (expenseTypesRow && expenseTypesRow.desc) {
         const parsedTypes = parseEntriesJson(expenseTypesRow.desc, null);
-        if (Array.isArray(parsedTypes)) {
-            STATE.expenseTypes = parsedTypes;
-            changed = true;
+        if (Array.isArray(parsedTypes) && _wantSlice(parsedTypes, STATE.expenseTypes)) {
+            STATE.expenseTypes = parsedTypes; changed = true;
         }
     }
     if (expensesRow && expensesRow.desc) {
-        STATE.expenses = dedupeById(parseEntriesJson(expensesRow.desc, []));
-        changed = true;
+        const next = dedupeById(parseEntriesJson(expensesRow.desc, []));
+        if (_wantSlice(next, STATE.expenses)) { STATE.expenses = next; changed = true; }
     }
     if (monthlyExpRow && monthlyExpRow.desc) {
         const parsed = parseEntriesJson(monthlyExpRow.desc, null);
-        if (parsed !== null) { STATE.monthlyExpenses = parsed; changed = true; }
+        if (parsed !== null && _wantSlice(parsed, STATE.monthlyExpenses)) { STATE.monthlyExpenses = parsed; changed = true; }
     }
     if (officeCashRow && officeCashRow.desc) {
-        STATE.officeExpenseCash = dedupeById(parseEntriesJson(officeCashRow.desc, []));
-        changed = true;
+        const next = dedupeById(parseEntriesJson(officeCashRow.desc, []));
+        if (_wantSlice(next, STATE.officeExpenseCash)) { STATE.officeExpenseCash = next; changed = true; }
     }
     if (glRow && glRow.desc) {
-        STATE.generalLedger = dedupeById(parseEntriesJson(glRow.desc, []));
-        changed = true;
+        const next = dedupeById(parseEntriesJson(glRow.desc, []));
+        if (_wantSlice(next, STATE.generalLedger)) { STATE.generalLedger = next; changed = true; }
     }
     if (caseTypesRow && caseTypesRow.desc) {
         const parsedCaseTypes = parseEntriesJson(caseTypesRow.desc, null);
-        if (Array.isArray(parsedCaseTypes) && parsedCaseTypes.length) {
-            STATE.caseTypes = parsedCaseTypes;
-            changed = true;
+        if (Array.isArray(parsedCaseTypes) && parsedCaseTypes.length && _wantSlice(parsedCaseTypes, STATE.caseTypes)) {
+            STATE.caseTypes = parsedCaseTypes; changed = true;
         }
     }
 
@@ -1213,115 +1219,48 @@ function showToast(msg, type='success') {
     setTimeout(() => t.remove(), 3000);
 }
 
-async function apiRequest(url, options = {}) {
-    // Default data pull is routed to Firestore so the app stays cloud-synced.
-    // RTDB: mainDb.ref(FIREBASE_ROWS_PATH).once('value')
-    // Firestore: getDocs(collection(mainDb, FIREBASE_ROWS_PATH))
-    // Data mapping: RTDB JSON tree 'erp_rows/{id}' → Firestore collection 'erp_rows' / document {id}
-    if (mainDb && url === API_URL && !options.method) {
-        await ensureFirebaseAuth();
-        const snap = await _getDocs(_col(mainDb, FIREBASE_ROWS_PATH));
-        const rows = [];
-        snap.forEach(docSnap => rows.push({ ...docSnap.data(), _firestoreId: docSnap.id }));
-        return rows;
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-        const fetchOptions = { ...options, signal: controller.signal };
-        const res = await fetch(url, fetchOptions);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text = await res.text();
-        return text ? JSON.parse(text) : {};
-    } finally {
-        clearTimeout(timeout);
-    }
-}
-
-async function gasPost(payload) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-        const payloadText = JSON.stringify(payload);
-        const attempts = [
-            {
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: payloadText
-            },
-            {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                body: new URLSearchParams({ payload: payloadText }).toString()
-            }
-        ];
-
-        let lastError;
-        for (const attempt of attempts) {
-            try {
-                const res = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: attempt.headers,
-                    body: attempt.body,
-                    signal: controller.signal
-                });
-                const text = await res.text();
-                if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
-                return text ? JSON.parse(text) : {};
-            } catch (err) {
-                lastError = err;
-            }
-        }
-
-        throw lastError || new Error('POST request failed');
-    } catch(e) {
-        console.error('[GAS POST] Error:', e, payload);
-        throw e;
-    } finally {
-        clearTimeout(timeout);
-    }
+async function fetchAllRowsFromCloud() {
+    // All data lives in Firestore collection erp_rows (users, tasks, accounting sync
+    // rows). Returns every row document as a plain array.
+    await ensureFirebaseReady();
+    await ensureFirebaseAuth();
+    if (!mainDb) throw new Error('Firestore is not initialized');
+    const snap = await _getDocs(_col(mainDb, FIREBASE_ROWS_PATH));
+    const rows = [];
+    snap.forEach(docSnap => rows.push({ ...docSnap.data(), _firestoreId: docSnap.id }));
+    return rows;
 }
 
 async function postRow(row) {
     await ensureFirebaseReady();
-    if (mainDb) {
-        await ensureFirebaseAuth();
-        const id = row?.id != null ? String(row.id) : String(Date.now());
-        const payload = { ...row, id: row?.id != null ? row.id : Number(id) };
-        // RTDB: mainDb.ref(`erp_rows/${id}`).set(payload)
-        // Firestore: setDoc(doc(collection, id), payload)
-        // Collection 'erp_rows' maps from RTDB node 'erp_rows'; document ID = row id
-        await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, id), payload);
-        return { ok: true, id: payload.id };
-    }
-    return await gasPost({ action: 'insert', data: row });
+    if (!mainDb) throw new Error('Firestore is not initialized — cannot write row');
+    await ensureFirebaseAuth();
+    const id = row?.id != null ? String(row.id) : String(Date.now());
+    const payload = { ...row, id: row?.id != null ? row.id : Number(id) };
+    await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, id), payload);
+    return { ok: true, id: payload.id };
 }
 
 async function patchRow(id, patch) {
     await ensureFirebaseReady();
-    if (mainDb) {
-        await ensureFirebaseAuth();
-        const targetId = String(id ?? patch?.id ?? '');
-        if (!targetId) throw new Error('Missing row id for Firestore update');
-        // Use setDoc with merge:true — creates doc if missing, updates if exists
-        // This prevents "No document to update" errors on first-time sync rows
-        await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, targetId), patch || {}, { merge: true });
-        return { ok: true, id: targetId };
-    }
-    return await gasPost({ action: 'update', id: id, data: patch });
+    if (!mainDb) throw new Error('Firestore is not initialized — cannot update row');
+    await ensureFirebaseAuth();
+    const targetId = String(id ?? patch?.id ?? '');
+    if (!targetId) throw new Error('Missing row id for Firestore update');
+    // Use setDoc with merge:true — creates doc if missing, updates if exists
+    // This prevents "No document to update" errors on first-time sync rows
+    await _setDoc(_doc(mainDb, FIREBASE_ROWS_PATH, targetId), patch || {}, { merge: true });
+    return { ok: true, id: targetId };
 }
 
 async function deleteRow(id) {
     await ensureFirebaseReady();
-    if (mainDb) {
-        await ensureFirebaseAuth();
-        const targetId = String(id ?? '');
-        if (!targetId) throw new Error('Missing row id for Firestore delete');
-        // RTDB: mainDb.ref(`erp_rows/${targetId}`).remove()
-        // Firestore: deleteDoc(doc(mainDb, 'erp_rows', targetId))
-        await _deleteDoc(_doc(mainDb, FIREBASE_ROWS_PATH, targetId));
-        return { ok: true, id: targetId };
-    }
-    return await gasPost({ action: 'delete', id: id });
+    if (!mainDb) throw new Error('Firestore is not initialized — cannot delete row');
+    await ensureFirebaseAuth();
+    const targetId = String(id ?? '');
+    if (!targetId) throw new Error('Missing row id for Firestore delete');
+    await _deleteDoc(_doc(mainDb, FIREBASE_ROWS_PATH, targetId));
+    return { ok: true, id: targetId };
 }
 
 function taskRows(data) {
@@ -1351,7 +1290,7 @@ async function syncData(silent=false) {
     const el = document.getElementById('loading');
     if (!silent && el) el.style.display='flex';
     try {
-        const newData = await apiRequest(API_URL);
+        const newData = await fetchAllRowsFromCloud();
         if (STATE.user && STATE.view==='dash') {
             const myTasks = taskRows(newData).filter(t => t.name===STATE.user.name && t.status!=='Completed');
             if (myTasks.length > STATE.lastTaskCount && STATE.lastTaskCount !== 0) notifyUser("New Task Assigned", myTasks[myTasks.length-1].title);
@@ -1396,8 +1335,68 @@ async function syncData(silent=false) {
 // Replaces 30-second polling. All clients receive updates within ~1 second
 // whenever any document in erp_rows changes in Firestore.
 let _realtimeUnsubscribe = null;
-let _lastRealtimeUpdate = 0;
-const REALTIME_DEBOUNCE_MS = 800; // prevent rapid consecutive re-renders
+let _snapshotTimer = null;   // trailing-debounce flush timer
+let _latestSnap = null;      // most recent snapshot awaiting processing
+let _fallbackPoll = null;    // the ONE fallback poller (never stacked)
+const SNAPSHOT_DEBOUNCE_MS = 250; // trailing debounce — always process the LATEST snapshot
+
+// Apply one snapshot to STATE (filters, hydrate, re-render). Called by the
+// trailing debounce so we always run against the newest snapshot, never a
+// dropped/stale one.
+function processSnapshot(snap) {
+    // Build new data array from snapshot
+    const newData = [];
+    snap.forEach(docSnap => newData.push({ ...docSnap.data(), _firestoreId: docSnap.id }));
+
+    // Apply same filters as syncData
+    const localTombstones = getDeletedTaskIds();
+    window._pendingDeletes = window._pendingDeletes || new Set();
+    const allDeleted = new Set([...window._pendingDeletes, ...localTombstones]);
+    let filtered = newData;
+    if (allDeleted.size > 0) {
+        filtered = filtered.filter(r => !allDeleted.has(String(r.id)));
+    }
+    filtered = filtered.filter(r => !r._deleted || isSyncRow(r));
+
+    // Notify if new task assigned
+    if (STATE.user && STATE.view === 'dash') {
+        const myTasks = taskRows(filtered).filter(t => t.name === STATE.user.name && t.status !== 'Completed');
+        if (myTasks.length > STATE.lastTaskCount && STATE.lastTaskCount !== 0) {
+            notifyUser("New Task Assigned", myTasks[myTasks.length - 1].title);
+        }
+        STATE.lastTaskCount = myTasks.length;
+    }
+
+    STATE.allData = filtered;
+    _patchSyncRowsIntoAllData();
+    hydrateAccountingFromAllData(STATE.allData);
+    if (typeof autoResetMonthlyExpenses === 'function') autoResetMonthlyExpenses();
+
+    // Only re-render if user is logged in, not typing in a form
+    if (STATE.view === 'dash' && STATE.user && !isTaskFormDirty()) {
+        const newHash = taskHash(STATE.allData);
+        if (newHash !== LAST_TASKS_HASH) {
+            LAST_TASKS_HASH = newHash;
+            scheduleRender();
+        } else if (STATE.tab !== 'create') {
+            // Re-render for accounting/other tab changes
+            scheduleRender();
+        }
+    }
+}
+
+// Single fallback poller — cleared before (re)start so intervals can never stack,
+// and only runs while the realtime listener is NOT attached.
+function stopFallbackPoll() {
+    if (_fallbackPoll) { clearInterval(_fallbackPoll); _fallbackPoll = null; }
+}
+function startFallbackPoll() {
+    stopFallbackPoll();
+    if (_realtimeUnsubscribe) return; // realtime is live — no poller needed
+    _fallbackPoll = setInterval(() => {
+        if (!_realtimeUnsubscribe && STATE.user) syncData(true);
+    }, 10000);
+}
 
 function startRealtimeSync() {
     if (!mainDb || !_onSnapshot || !_col) return;
@@ -1410,78 +1409,43 @@ function startRealtimeSync() {
         _realtimeUnsubscribe = _onSnapshot(
             _col(mainDb, FIREBASE_ROWS_PATH),
             (snap) => {
-                // Debounce: ignore updates that arrive within 800ms of each other
-                const now = Date.now();
-                if (now - _lastRealtimeUpdate < REALTIME_DEBOUNCE_MS) return;
-                _lastRealtimeUpdate = now;
-
-                // Build new data array from snapshot
-                const newData = [];
-                snap.forEach(docSnap => newData.push({ ...docSnap.data(), _firestoreId: docSnap.id }));
-
-                // Apply same filters as syncData
-                const localTombstones = getDeletedTaskIds();
-                window._pendingDeletes = window._pendingDeletes || new Set();
-                const allDeleted = new Set([...window._pendingDeletes, ...localTombstones]);
-                let filtered = newData;
-                if (allDeleted.size > 0) {
-                    filtered = filtered.filter(r => !allDeleted.has(String(r.id)));
-                }
-                filtered = filtered.filter(r => !r._deleted || isSyncRow(r));
-
-                // Notify if new task assigned
-                if (STATE.user && STATE.view === 'dash') {
-                    const myTasks = taskRows(filtered).filter(t => t.name === STATE.user.name && t.status !== 'Completed');
-                    if (myTasks.length > STATE.lastTaskCount && STATE.lastTaskCount !== 0) {
-                        notifyUser("New Task Assigned", myTasks[myTasks.length - 1].title);
-                    }
-                    STATE.lastTaskCount = myTasks.length;
-                }
-
-                STATE.allData = filtered;
-                _patchSyncRowsIntoAllData();
-                hydrateAccountingFromAllData(STATE.allData);
-                if (typeof autoResetMonthlyExpenses === 'function') autoResetMonthlyExpenses();
-
-                // Only re-render if user is logged in, not typing in a form
-                if (STATE.view === 'dash' && STATE.user && !isTaskFormDirty()) {
-                    const newHash = taskHash(STATE.allData);
-                    if (newHash !== LAST_TASKS_HASH) {
-                        LAST_TASKS_HASH = newHash;
-                        scheduleRender();
-                    } else if (STATE.tab !== 'create') {
-                        // Re-render for accounting/other tab changes
-                        scheduleRender();
-                    }
-                }
+                // Skip our OWN un-acked local write echo (it will be re-delivered as a
+                // server snapshot once acked). Never skip a server snapshot.
+                if (snap.metadata && snap.metadata.hasPendingWrites) return;
+                // Trailing debounce: remember the LATEST snapshot and process it after a
+                // short settle. Firestore delivers a cached snapshot first and the
+                // authoritative server snapshot a few ms later — this guarantees we always
+                // process the newest one instead of dropping it.
+                _latestSnap = snap;
+                if (_snapshotTimer) return; // a flush is already scheduled; it will use _latestSnap
+                _snapshotTimer = setTimeout(() => {
+                    _snapshotTimer = null;
+                    const s = _latestSnap; _latestSnap = null;
+                    if (s) processSnapshot(s);
+                }, SNAPSHOT_DEBOUNCE_MS);
             },
             (error) => {
-                // Listener error — fall back to periodic polling
+                // Listener error — drop the listener and fall back to the single poller.
                 console.warn('Realtime listener error, falling back to polling:', error);
                 if (_realtimeUnsubscribe) {
                     try { _realtimeUnsubscribe(); } catch(_) {}
                     _realtimeUnsubscribe = null;
                 }
-                // Fallback: poll every 5 seconds if realtime fails
-                setTimeout(() => {
-                    if (!_realtimeUnsubscribe) {
-                        setInterval(() => syncData(true), 5000);
-                    }
-                }, 2000);
+                startFallbackPoll();
             }
         );
+        // Listener attached successfully — ensure no fallback poller is running.
+        stopFallbackPoll();
         console.log('[ERP] Real-time sync started');
     } catch(e) {
         console.warn('[ERP] Could not start real-time sync:', e);
-        // Fallback to 5-second polling
-        setInterval(() => syncData(true), 5000);
+        startFallbackPoll();
     }
 }
 
-// Fallback polling — only runs if real-time listener is not active
-setInterval(() => {
-    if (!_realtimeUnsubscribe && STATE.user) syncData(true);
-}, 10000);
+// Start the single safety poller. It no-ops while the realtime listener is live and
+// is cleared/replaced (never stacked) whenever it is (re)started.
+startFallbackPoll();
 
 function notifyUser(title, body) {
     if (!('Notification' in window)) return;
@@ -1506,7 +1470,7 @@ async function login() {
     btn.disabled = true;
     try {
         // Always fetch fresh data before checking credentials
-        const freshData = await apiRequest(API_URL);
+        const freshData = await fetchAllRowsFromCloud();
         STATE.allData = freshData;
         hydrateAccountingFromAllData(freshData);
         const candidates = [...FALLBACK_USERS, ...freshData];
@@ -4063,7 +4027,7 @@ function render() {
             </div>
         </div>`;
         // Pre-fetch data silently so it's ready
-        if (STATE.allData.length===0) apiRequest(API_URL).then(d=>{ STATE.allData=d; }).catch(()=>{});
+        if (STATE.allData.length===0) fetchAllRowsFromCloud().then(d=>{ STATE.allData=d; }).catch(()=>{});
     } else {
         const users = STATE.allData.filter(d => d.un);
         const tasks = taskRows(STATE.allData);
