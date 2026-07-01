@@ -936,6 +936,7 @@ function hydrateAccountingFromAllData(data=STATE.allData) {
     const allRows = [coaRow, arRow, apRow, monthlyExpRow, cashRow, expenseTypesRow, expensesRow, officeCashRow, glRow, caseTypesRow];
     const remoteV = allRows.reduce((max, r) => Math.max(max, syncRowVersion(r)), 0);
     const localV  = getLocalAccountingVersion();
+    console.debug('[ERP hydrate]', { remoteV, localV, adopting: remoteV >= localV });
     // No accounting sync rows in the cloud at all → nothing to hydrate.
     if (!allRows.some(Boolean)) return false;
     // A strictly OLDER remote snapshot can never override newer local state — this
@@ -1310,9 +1311,9 @@ async function syncData(silent=false) {
         // This handles cases where the hard delete was blocked by security rules
         STATE.allData = STATE.allData.filter(r => !r._deleted || isSyncRow(r));
 
-        // Patch local accounting into allData BEFORE hydration
-        // so hydration reads post-delete state, not stale cloud copy
-        _patchSyncRowsIntoAllData();
+        // Hydrate accounting directly from the freshly-fetched cloud sync rows.
+        // (Do NOT patch local STATE into allData first — that would overwrite the
+        //  incoming cloud rows and prevent other devices from ever adopting them.)
         hydrateAccountingFromAllData(STATE.allData);
         autoResetMonthlyExpenses();
 
@@ -1368,7 +1369,9 @@ function processSnapshot(snap) {
     }
 
     STATE.allData = filtered;
-    _patchSyncRowsIntoAllData();
+    // Hydrate accounting directly from the cloud sync rows in this snapshot.
+    // (Do NOT patch local STATE into allData first — that would overwrite the
+    //  incoming cloud rows and prevent other devices from ever adopting them.)
     hydrateAccountingFromAllData(STATE.allData);
     if (typeof autoResetMonthlyExpenses === 'function') autoResetMonthlyExpenses();
 
