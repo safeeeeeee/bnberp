@@ -20,6 +20,15 @@
         if (window.__firebaseReady) { resolve(); return; }
         window.__firebaseReadyResolve = resolve;
     });
+    // Apply the saved theme BEFORE first paint so there is no light→dark flash.
+    // The attribute lives on <html>, so render() rewriting #app never resets it.
+    (function() {
+        try {
+            if (localStorage.getItem('erp_theme') === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch (e) { /* localStorage unavailable — default to light */ }
+    })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -186,15 +195,12 @@
         .badge-unpaid { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
 
         /* LEADERBOARD */
-        .leader-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 8px; margin-bottom: 6px; transition: background 0.15s; }
-        .leader-row:hover { background: var(--navy-800); }
         .leader-rank { font-size: 13px; font-weight: 700; color: var(--text-muted); min-width: 24px; }
         .leader-rank.gold { color: var(--gold); }
         .leader-rank.silver { color: #a3a3a3; }
         .leader-rank.bronze { color: #b45309; }
         .leader-info { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 12px; }
         .leader-name { font-size: 13px; font-weight: 500; }
-        .leader-score { font-size: 14px; font-weight: 700; color: var(--success); min-width: 70px; text-align: right; }
         .score-bar-wrap { flex: 1; height: 4px; background: rgba(0,0,0,0.08); border-radius: 2px; margin: 0 14px; overflow: hidden; }
         .score-bar { height: 100%; background: #2563eb; border-radius: 2px; transition: width 0.6s ease; box-shadow: 0 0 6px rgba(37,99,235,0.4); }
 
@@ -212,20 +218,6 @@
         .avatar-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border-bright); }
         .avatar-sm-fallback { width: 32px; height: 32px; border-radius: 50%; background: var(--navy-700); border: 1.5px solid var(--border-bright); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--navy-200); flex-shrink: 0; }
 
-        /* ACCOUNTING TABS */
-        .sub-tabs { display: flex; gap: 6px; margin-bottom: 22px; border-bottom: 1px solid var(--border); padding-bottom: 0; flex-wrap: wrap; }
-        .sub-tab { padding: 8px 16px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: -1px; transition: all 0.2s; }
-        .sub-tab:hover { color: #2563eb; }
-        .sub-tab.active { color: #2563eb; border-bottom-color: #2563eb; text-shadow: 0 0 10px rgba(37,99,235,0.45); }
-
-        /* ACCOUNT TYPE COLORS */
-        .acc-assets { color: #d4d4d4; }
-        .acc-liabilities { color: #f87171; }
-        .acc-equity { color: #a78bfa; }
-        .acc-revenues { color: #34d399; }
-        .acc-expenses { color: #fbbf24; }
-        .acc-section-header { background: rgba(0,0,0,0.05); border-radius: 6px; padding: 8px 14px; margin: 12px 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
-
         /* STATUS SELECT */
         .status-select { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: var(--text-primary); font-family: inherit; font-size: 12px; cursor: pointer; margin-top: 0; width: auto; }
 
@@ -238,7 +230,6 @@
         .amount-gold { color: var(--gold); font-weight: 600; }
 
         /* TASK DETAIL PANEL */
-        .task-detail { background: rgba(0,0,0,0.03); border: 1px solid var(--border-bright); border-radius: 10px; padding: 20px; margin-top: 8px; }
         .task-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
         .task-detail-item { background: #fff; border-radius: 8px; padding: 10px 14px; border: 1px solid var(--border); }
         .task-detail-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
@@ -247,33 +238,20 @@
         /* AR LINK BADGE */
         .ar-link { display: inline-flex; align-items: center; gap: 4px; background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.3); border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
 
-        /* CLICKABLE ROW */
-        .clickable-row { cursor: pointer; }
-        .clickable-row:hover td { background: rgba(0,0,0,0.03); }
-
         /* REASSIGN BTN */
         .btn-action-group { display: flex; gap: 5px; flex-wrap: wrap; }
 
         /* WORKLOAD WIDGET */
         .workload-widget { background: rgba(0,0,0,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
 
-        /* TABS SWITCH */
-        .tab-switch { display: flex; background: rgba(0,0,0,0.05); border-radius: 8px; padding: 3px; gap: 2px; margin-bottom: 20px; border: 1px solid var(--border); }
-        .tab-switch-btn { flex: 1; padding: 7px 12px; border: none; background: none; color: var(--text-secondary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
-        .tab-switch-btn.active { background: #2563eb; color: #fff; border: 1px solid rgba(37,99,235,0.3); box-shadow: 0 0 10px rgba(37,99,235,0.25); }
-
         /* ── GLOBAL ANIMATIONS ── */
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes scaleIn  { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-        @keyframes shimmer  { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         @keyframes countUp  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
         .anim-fade-up  { animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
-        .anim-fade     { animation: fadeIn 0.25s ease both; }
-        .anim-scale    { animation: scaleIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
-        .anim-slide-right { animation: slideInRight 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
         /* Stagger delays for children */
         .stagger > *:nth-child(1)  { animation-delay: 0ms; }
@@ -323,7 +301,6 @@
         .coa-table tbody tr:hover { background: rgba(0,0,0,0.04); }
         .coa-table tbody tr:last-child td { border-bottom: none; }
         .acc-code  { font-family: 'Courier New', monospace; font-size: 12px; color: var(--text-muted); background: var(--navy-800); padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border); white-space: nowrap; }
-        .acc-type-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .coa-section-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
         .coa-section-assets      { background: rgba(212,212,212,0.1); color: #d4d4d4; border: 1px solid rgba(212,212,212,0.2); }
         .coa-section-liabilities { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
@@ -337,7 +314,6 @@
         .coa-filter-btn:hover { background: var(--navy-600); color: var(--text-primary); }
         .coa-stat-bar { height: 3px; border-radius: 2px; margin-top: 8px; background: var(--navy-700); overflow: hidden; }
         .coa-stat-fill { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.22,1,0.36,1); }
-        .inline-edit-input { background: var(--navy-750); border: 1px solid var(--accent); color: var(--text-primary); padding: 4px 8px; border-radius: 5px; font-size: 13px; font-family: inherit; outline: none; width: 100%; animation: scaleIn 0.15s ease; }
 
         /* ── OFF-WHITE THEME EXTRA OVERRIDES ── */
 
@@ -365,9 +341,6 @@
         .sync-dot { color: #059669 !important; }
         .sync-dot::before { background: #059669 !important; }
 
-        /* Leader row hover */
-        .leader-row:hover { background: rgba(0,0,0,0.04) !important; }
-
         /* Auth brand icon */
         .auth-logo .brand-icon { background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; border-color: rgba(37,99,235,0.3) !important; }
 
@@ -384,6 +357,73 @@
         /* Spinner accent */
         .spinner { border-top-color: #2563eb !important; border-color: rgba(0,0,0,0.1) !important; }
 
+        /* ── THEME TOGGLE ── */
+        .theme-toggle-btn { cursor: pointer; }
+        .theme-fab { position: fixed; top: 18px; left: 20px; z-index: 500; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-bright); background: var(--navy-850); cursor: pointer; font-size: 16px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.12); transition: transform 0.15s ease; }
+        .theme-fab:hover { transform: scale(1.08); }
+
+        /* ── DARK THEME ──────────────────────────────────────────────
+           All colors flow through the CSS variables above; this block
+           re-points them and overrides the few hard-coded light values.
+           Activated by data-theme="dark" on <html> (persisted in
+           localStorage as erp_theme by toggleTheme()). */
+        [data-theme="dark"] {
+            --navy-950: #0a0f1e;
+            --navy-900: #0d1526;
+            --navy-850: #131c31;
+            --navy-800: #1a2440;
+            --navy-750: #1f2b4a;
+            --navy-700: #273456;
+            --navy-600: #3b4a6f;
+            --navy-500: #64748b;
+            --navy-400: #8494ac;
+            --navy-300: #b6c2d6;
+            --navy-200: #d7dfeb;
+            --navy-100: #eef2f8;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59,130,246,0.15);
+            --gold: #f59e0b;
+            --gold-dim: rgba(245,158,11,0.15);
+            --text-primary: #e8edf6;
+            --text-secondary: #a7b3c8;
+            --text-muted: #67748d;
+            --border: rgba(255,255,255,0.09);
+            --border-bright: rgba(255,255,255,0.18);
+            --success: #10b981;
+            --success-bg: rgba(16,185,129,0.12);
+            --danger: #f87171;
+            --danger-bg: rgba(248,113,113,0.12);
+            --warning: #fbbf24;
+            --warning-bg: rgba(251,191,36,0.12);
+            --purple: #a78bfa;
+            --purple-bg: rgba(167,139,250,0.12);
+        }
+        /* Hard-coded light values that variables don't reach */
+        [data-theme="dark"] .header { background: rgba(13,21,38,0.92); box-shadow: 0 1px 8px rgba(0,0,0,0.4); }
+        [data-theme="dark"] .sidebar { background: #101a30; }
+        [data-theme="dark"] #loading { background: var(--navy-800); color: var(--text-secondary); }
+        [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: var(--navy-800) !important; color: var(--text-primary) !important; border-color: rgba(255,255,255,0.14) !important; }
+        [data-theme="dark"] input::placeholder { color: #67748d !important; }
+        [data-theme="dark"] select option { background: #1a2440; color: #e8edf6; }
+        [data-theme="dark"] [style*="background: var(--navy-800)"],
+        [data-theme="dark"] [style*="background:var(--navy-800)"] { background: var(--navy-800) !important; }
+        [data-theme="dark"] tbody tr { border-bottom-color: rgba(255,255,255,0.05); }
+        [data-theme="dark"] tbody tr:hover { background: rgba(255,255,255,0.04); }
+        [data-theme="dark"] .coa-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+        [data-theme="dark"] .status-select { background: var(--navy-800); }
+        [data-theme="dark"] .task-detail-item { background: var(--navy-800); }
+        [data-theme="dark"] .score-bar-wrap { background: rgba(255,255,255,0.1); }
+        [data-theme="dark"] .workload-widget { background: rgba(255,255,255,0.04); }
+        [data-theme="dark"] .coa-toolbar { background: var(--navy-800); }
+        [data-theme="dark"] .auth-hint { background: rgba(255,255,255,0.05) !important; border-color: rgba(255,255,255,0.08) !important; }
+        [data-theme="dark"] .auth-hint strong { color: #60a5fa !important; }
+        [data-theme="dark"] .sidebar-section { color: #64748b !important; }
+        [data-theme="dark"] .spinner { border-color: rgba(255,255,255,0.15) !important; border-top-color: var(--accent) !important; }
+        [data-theme="dark"] .toast { background: #1e293b; border-color: rgba(255,255,255,0.15); }
+        [data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.6); }
+        [data-theme="dark"] .card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.45); }
+        [data-theme="dark"] .sync-dot { color: #34d399 !important; }
+        [data-theme="dark"] .sync-dot::before { background: #34d399 !important; }
     </style>
 </head>
 <body>
@@ -410,7 +450,6 @@ if (location.protocol === 'file:') {
         document.body.prepend(banner);
     });
 }
-const GOOGLE_SHEET_ID = '1yTvYYjMTA7hOqz3lcaB7mxqE9sUR4-EGLDfHvlmDchY';
 
 // ── FIREBASE v10 MODULAR SDK (Firestore) — Main App Block ──
 // These are populated after __firebaseReadyPromise resolves
@@ -513,11 +552,9 @@ let STATE = {
     user: JSON.parse(localStorage.getItem('erp_user')) || null,
     view: localStorage.getItem('erp_user') ? 'dash' : 'login',
     tab: 'tasks',
-    subTab: 'coa',
     allData: [],
     lastTaskCount: 0,
     leaderFilter: 'all', // 'all', 'employee', 'consultant'
-    taskView: 'all', // 'all', 'mine'
     caseSort: 'newest',
     myTaskSort: 'newest',
     arSort: 'newest',
@@ -542,7 +579,6 @@ let STATE = {
         overdue: true,
         linked: true
     },
-    accountingSeeded: false,
     focusState: null,
     chartOfAccounts: JSON.parse(localStorage.getItem(LS_ACCOUNTS) || 'null'),
     accountsReceivable: JSON.parse(localStorage.getItem(LS_AR) || '[]'),
@@ -830,7 +866,7 @@ async function saveUserProfileModal(userId, isSelf) {
     }
     if (!Object.keys(patch).length) { showToast('No changes to save', 'info'); return; }
     try {
-        await patchRow(user.id, patch);
+        await patchRow(user._firestoreId || user.id, patch);
         applyUserSessionUpdate({ ...user, ...patch });
         closeModal();
         showToast('Profile updated!');
@@ -897,9 +933,6 @@ function getLatestRowsByTitle(data=STATE.allData) {
     }
     return [...latest.values()];
 }
-function isLegacyAccountingRow(row) {
-    return false;
-}
 function buildSyncRow(kind, key, payload) {
     const title = makeSyncTitle(kind, key);
     return {
@@ -918,16 +951,22 @@ function buildSyncRow(kind, key, payload) {
     };
 }
 function hydrateAccountingFromAllData(data=STATE.allData) {
-    const coaRow = getSyncRow('accounting', 'coa', data);
-    const arRow = getSyncRow('accounting', 'ar', data);
-    const apRow = getSyncRow('accounting', 'ap', data);
-    const monthlyExpRow = getSyncRow('accounting', 'monthly_exp', data);
-    const cashRow = getSyncRow('accounting', 'cash', data);
-    const expenseTypesRow = getSyncRow('accounting', 'expense_types', data);
-    const expensesRow = getSyncRow('accounting', 'expenses', data);
-    const officeCashRow = getSyncRow('accounting', 'office_expense_cash', data);
-    const glRow = getSyncRow('accounting', 'gl', data);
-    const caseTypesRow = getSyncRow('accounting', 'case_types', data);
+    // Build the latest-row-by-title map ONCE instead of once per sync key
+    // (getSyncRow rescans the whole data array on every call — this function
+    // runs on every realtime snapshot, so that was 10 full scans per sync).
+    const latestByTitle = new Map();
+    for (const row of getLatestRowsByTitle(data)) latestByTitle.set(row.title, row);
+    const syncRowOf = (key) => latestByTitle.get(makeSyncTitle('accounting', key));
+    const coaRow = syncRowOf('coa');
+    const arRow = syncRowOf('ar');
+    const apRow = syncRowOf('ap');
+    const monthlyExpRow = syncRowOf('monthly_exp');
+    const cashRow = syncRowOf('cash');
+    const expenseTypesRow = syncRowOf('expense_types');
+    const expensesRow = syncRowOf('expenses');
+    const officeCashRow = syncRowOf('office_expense_cash');
+    const glRow = syncRowOf('gl');
+    const caseTypesRow = syncRowOf('case_types');
 
     // ── VERSION GUARD ──
     // Determine the newest version present in the cloud snapshot. Only accept the
@@ -1135,39 +1174,6 @@ async function upsertSyncRow(kind, key, payload) {
     }
     return await postRow(row);
 }
-async function deleteSyncRow(kind, key) {
-    const existing = getSyncRow(kind, key);
-    if (!existing || existing.id == null) return;
-    return await deleteRow(existing.id);
-}
-async function upsertCoaSection(type) {
-    if (!STATE.chartOfAccounts || !Array.isArray(STATE.chartOfAccounts[type])) return;
-    return await upsertSyncRow('accounting', 'coa', STATE.chartOfAccounts);
-}
-async function seedAccountingDataIfMissing(data=STATE.allData) {
-    const hasCoa = !!getSyncRow('accounting', 'coa', data);
-    const hasAr = !!getSyncRow('accounting', 'ar', data);
-    const hasAp = !!getSyncRow('accounting', 'ap', data);
-    const hasCash = !!getSyncRow('accounting', 'cash', data);
-    const hasExpenseTypes = !!getSyncRow('accounting', 'expense_types', data);
-    const hasExpenses = !!getSyncRow('accounting', 'expenses', data);
-    const hasOfficeCash = !!getSyncRow('accounting', 'office_expense_cash', data);
-    const hasGl = !!getSyncRow('accounting', 'gl', data);
-    if (hasCoa && hasAr && hasAp && hasCash && hasExpenseTypes && hasExpenses && hasOfficeCash && hasGl) return;
-    await rewriteAccountingRowsInDb();
-}
-function resetAccountingLocalState() {
-    STATE.chartOfAccounts = defaultChartOfAccounts();
-    STATE.accountsReceivable = [];
-    STATE.accountsPayable = [];
-    STATE.cashTransactions = [];
-    STATE.expenseTypes = defaultExpenseTypes();
-    STATE.expenses = [];
-    STATE.officeExpenseCash = [];
-    STATE.generalLedger = [];
-    STATE.caseTypes = defaultCaseTypes();
-    saveAccounting();
-}
 async function rewriteAccountingRowsInDb() {
     // Run all writes in parallel (Promise.all) instead of sequentially —
     // reduces round-trips from serial awaits to a single parallel batch.
@@ -1211,6 +1217,29 @@ function _patchSyncRowsIntoAllData() {
         else STATE.allData.push(row);
     }
 }
+// ── DARK THEME TOGGLE ──
+// Theme state lives on <html data-theme> (applied before first paint by the
+// head script) and persists in localStorage. render() only rewrites #app, so
+// the attribute — and therefore the theme — survives every sync re-render.
+function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
+function themeIcon() {
+    return currentTheme() === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme() {
+    const next = currentTheme() === 'dark' ? 'light' : 'dark';
+    if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    try { localStorage.setItem('erp_theme', next); } catch (e) {}
+    // Update toggle button icons in place — no re-render needed, so form
+    // values and focus are never disturbed by switching theme.
+    document.querySelectorAll('.theme-toggle-btn').forEach(b => {
+        b.textContent = themeIcon();
+        b.title = next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    });
+}
+
 function showToast(msg, type='success') {
     const t = document.createElement('div');
     t.className = 'toast';
@@ -1591,14 +1620,6 @@ async function createTask() {
     }
 }
 
-async function updateStatus(id, s) {
-    const patch = { status: s };
-    if (s === 'Completed') patch.completedAt = nowStamp();
-    if (s !== 'Completed') patch.completedAt = '';
-    await patchRow(id, patch);
-    syncData(true);
-}
-
 // ── REASSIGN TASK ──
 function openReassignTask(taskId) {
     if (!requireAdmin('reassign tasks')) return;
@@ -1633,10 +1654,13 @@ async function saveReassign(taskId) {
     const newAssignee = document.getElementById('reassign_to').value;
     const reason = document.getElementById('reassign_reason').value;
     const task = STATE.allData.find(t => String(t.id)===String(taskId));
+    if (!task) { showToast('Task not found', 'error'); return; }
     const patch = { name: newAssignee };
     if (reason) patch.desc = (task.desc||'') + ` [Reassigned: ${reason}]`;
     try {
-        await patchRow(taskId, patch);
+        // Patch by the real Firestore doc id — setDoc(merge) on a wrong id would
+        // otherwise create an orphan partial document instead of updating the task.
+        await patchRow(task._firestoreId || taskId, patch);
         closeModal();
         showToast(`Task reassigned to ${newAssignee}!`);
         syncData(true);
@@ -1839,9 +1863,6 @@ function openViewTask(taskId) {
     </div>`;
 }
 
-// ── EDIT TASK MODAL (kept for backward compat) ──
-function openEditTask(taskId) { openViewTask(taskId); }
-
 async function saveTaskEdit(taskId, fromView=false) {
     if (!canEditTaskStatus()) {
         showToast('You do not have permission to update tasks.', 'error');
@@ -1857,7 +1878,8 @@ async function saveTaskEdit(taskId, fromView=false) {
     if (status === 'Completed') patch.completedAt = nowStamp();
     if (status && status !== 'Completed') patch.completedAt = '';
     try {
-        await patchRow(taskId, patch);
+        const task = STATE.allData.find(t => String(t.id) === String(taskId));
+        await patchRow((task && task._firestoreId) || taskId, patch);
         closeModal();
         showToast('Task updated!');
         syncData(true);
@@ -2040,10 +2062,14 @@ async function deleteUser(userId, username) {
     // before the cloud delete propagates.
     window._pendingDeletes = window._pendingDeletes || new Set();
     window._pendingDeletes.add(String(userId));
+    // Resolve the real Firestore doc id BEFORE removing the row from local state —
+    // older rows can have a doc id that differs from their logical id, and
+    // deleteDoc on a non-existent path succeeds silently (user would reappear).
+    const userRow = STATE.allData.find(u => u.un && String(u.id) === String(userId));
     STATE.allData = STATE.allData.filter(u => !(u.un && String(u.id) === String(userId)));
     render();
     try {
-        await deleteRow(userId);
+        await deleteRow((userRow && userRow._firestoreId) || userId);
         window._pendingDeletes.delete(String(userId));
         showToast(`User "${username}" deleted.`);
         render();
@@ -2163,8 +2189,6 @@ function renderCOA(isAdmin) {
             ${label}${count ? ` <span style="opacity:0.6;">(${count})</span>` : ''}
         </button>`;
     }
-
-    const totalPct = totalAll > 0 ? 100 : 0;
 
     return `
     <div class="anim-fade-up" style="animation-delay:0ms;">
@@ -2503,6 +2527,7 @@ function printCOA() {
         </tbody></table></div>`;
     }).join('');
     const w = window.open('','_blank');
+    if (!w) { showToast('Popup blocked — allow popups for this site to print.', 'error'); return; }
     w.document.write(`<!DOCTYPE html><html><head><title>Chart of Accounts — B&B ERP</title></head><body>
     <h2>📒 Chart of Accounts — B&amp;B ERP Pro</h2>
     <div style="font-size:12px;color:#666;margin-bottom:16px;">Printed: ${new Date().toLocaleString('en-PK')}</div>
@@ -3559,6 +3584,7 @@ function printBS() {
     const today = new Date().toLocaleDateString('en-PK', { year:'numeric', month:'long', day:'numeric' });
     const makeRows = (items) => items.map(a => `<tr><td style="padding:6px 10px;">${a.name} <span style="color:#999;font-size:11px;">(${a.code})</span></td><td style="padding:6px 10px;text-align:right;font-weight:600;">${fmt(a.balance||0)}</td></tr>`).join('');
     const w = window.open('','_blank');
+    if (!w) { showToast('Popup blocked — allow popups for this site to print.', 'error'); return; }
     w.document.write(`<!DOCTYPE html><html><head><title>Balance Sheet — B&B ERP Pro</title>
     <style>body{font-family:Arial,sans-serif;padding:20px;color:#111;}h2{margin-bottom:4px;}table{width:100%;border-collapse:collapse;margin-bottom:16px;}th,td{border-bottom:1px solid #ddd;font-size:13px;}th{background:#f5f5f5;padding:8px 10px;text-align:left;}.total-row{background:#f0f0f0;font-weight:bold;}.section-head{background:#e8e8e8;font-weight:700;font-size:12px;letter-spacing:0.5px;padding:6px 10px;text-transform:uppercase;}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}</style></head><body>
     <h2>🏛 Balance Sheet — B&amp;B ERP Pro</h2><p style="color:#666;font-size:13px;">As at ${today}</p><hr>
@@ -3942,6 +3968,7 @@ function exportTB() {
 }
 function printGL() {
     const w = window.open('','_blank');
+    if (!w) { showToast('Popup blocked — allow popups for this site to print.', 'error'); return; }
     const rows = STATE.generalLedger.map(e => `<tr><td>${e.date||''}</td><td>${e.accountCode||''}</td><td>${e.accountName||''}</td><td>${e.description||''}${e.reference?' ('+e.reference+')':''}</td><td style="text-align:right;">${e.debit>0?e.debit.toFixed(2):''}</td><td style="text-align:right;">${e.credit>0?e.credit.toFixed(2):''}</td></tr>`).join('');
     w.document.write(`<!DOCTYPE html><html><head><title>General Ledger</title></head><body><h2>General Ledger — B&B ERP Pro</h2><div style="font-size:12px;color:#666;margin-bottom:16px;">Printed: ${new Date().toLocaleString('en-PK')}</div><table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#f0f0f0;"><th>Date</th><th>Code</th><th>Account</th><th>Description</th><th>Debit</th><th>Credit</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
     w.document.close(); w.print();
@@ -3952,6 +3979,7 @@ function printTB() {
     const tc = tbRows.reduce((s,r)=>s+r.creditBalance,0);
     const rows = tbRows.map(r=>`<tr><td>${r.code||''}</td><td>${r.name||''}</td><td>${r.type||''}</td><td style="text-align:right;">${r.debitBalance>0?r.debitBalance.toFixed(2):''}</td><td style="text-align:right;">${r.creditBalance>0?r.creditBalance.toFixed(2):''}</td></tr>`).join('');
     const w = window.open('','_blank');
+    if (!w) { showToast('Popup blocked — allow popups for this site to print.', 'error'); return; }
     w.document.write(`<!DOCTYPE html><html><head><title>Trial Balance</title></head><body><h2>Trial Balance — B&B ERP Pro</h2><div style="font-size:12px;color:#666;margin-bottom:16px;">Printed: ${new Date().toLocaleString('en-PK')}</div><table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#f0f0f0;"><th>Code</th><th>Account Name</th><th>Category</th><th>Debit Balance</th><th>Credit Balance</th></tr></thead><tbody>${rows}<tr style="background:#eee;font-weight:bold;"><td colspan="3">TOTAL</td><td style="text-align:right;">${td.toFixed(2)}</td><td style="text-align:right;">${tc.toFixed(2)}</td></tr></tbody></table></body></html>`);
     w.document.close(); w.print();
 }
@@ -4051,14 +4079,6 @@ function deleteGLEntry(id) {
     });
 }
 
-// Drill from Trial Balance into GL filtered to a specific account code
-function drillToGL(accountCode) {
-    STATE.tab = 'gl';
-    STATE.glAccountFilter = String(accountCode);
-    STATE.glDateFrom = '';
-    STATE.glDateTo = '';
-    render();
-}
 let _renderTimer = null;
 function scheduleRender() {
     if (_renderTimer) clearTimeout(_renderTimer);
@@ -4070,6 +4090,7 @@ function render() {
     if (STATE.view==='login') {
         app.innerHTML = `
         <div class="auth-bg">
+            <button class="theme-fab theme-toggle-btn" onclick="toggleTheme()" title="Switch theme">${themeIcon()}</button>
             <div class="auth-card">
                 <div class="auth-logo">
                     <div class="brand-icon">
@@ -4120,6 +4141,7 @@ function render() {
                     <div class="user-role">${currentUserData.role||'Staff'}</div>
                 </div>
                 <button class="header-avatar-btn" onclick="openMyProfile()" title="Edit profile">${avatarHtml(currentUserData.pic, currentUserData.name)}</button>
+                <button class="btn-sm theme-toggle-btn" onclick="toggleTheme()" style="margin-top:0;" title="Switch theme">${themeIcon()}</button>
                 <button class="btn-sm" onclick="openMyProfile()" style="margin-top:0;">Profile</button>
                 <button class="btn-logout" onclick="logout()">Sign Out</button>
             </div>
@@ -4334,7 +4356,9 @@ function autoResetMonthlyExpenses() {
             changed = true;
         }
     }
-    if (changed) persistAccountingNow();
+    // Silent persist — this runs from background sync; a "Saved successfully!"
+    // toast here would appear out of nowhere when a month rolls over.
+    if (changed) persistAccountingNow('');
 }
 
 function renderTab(users, tasks) {
@@ -4372,7 +4396,6 @@ function renderTab(users, tasks) {
                 <th>Client & Type</th><th>Priority</th><th>Status</th><th>Amount Recv.</th><th>Description</th><th>Actions</th>
             </tr></thead>
             <tbody>${sortedMyTasks.map(t => {
-                const linkedAR = STATE.accountsReceivable.find(r=>String(r.linkedTaskId)===String(t.id));
                 return `<tr>
                     <td>
                         <div class="td-title">${t.title||'—'}</div>
@@ -4439,7 +4462,6 @@ function renderTab(users, tasks) {
                 <th>Actions</th>
             </tr></thead>
             <tbody>${sortedVisibleTasks.map(t => {
-                const linkedAR = STATE.accountsReceivable.find(r=>String(r.linkedTaskId)===String(t.id));
                 return `<tr>
                     <td>
                         <div class="td-title">${t.title||'—'}</div>
@@ -4958,14 +4980,11 @@ function renderTab(users, tasks) {
                 paymentMode: ar.paymentMode || 'Cash',
                 readOnly: true
             }));
-        // Merge: manual + AR-auto, dedup by ref
+        // Merge: manual + AR-auto (fromAR rows are excluded above, so no duplicates)
         const allCashTxs = [
             ...STATE.cashTransactions.filter(t => !t.fromAR),
             ...arPaymentTxs
         ];
-        // Remove AR-payment duplicates that were manually also in cashTransactions
-        const seenArIds = new Set(arPaymentTxs.map(t => t.id));
-        const mergedTxs = allCashTxs.filter(t => !STATE.cashTransactions.find(m => m.fromAR && m.arId && t.id === 'AR_PMT_' + m.arId));
         const cashIn  = allCashTxs.filter(t=>t.type==='Cash In'||t.type==='Bank Deposit').reduce((s,t)=>s+t.amount,0);
         const cashOut = allCashTxs.filter(t=>t.type==='Cash Out'||t.type==='Bank Withdrawal').reduce((s,t)=>s+t.amount,0);
         const net     = cashIn - cashOut;
